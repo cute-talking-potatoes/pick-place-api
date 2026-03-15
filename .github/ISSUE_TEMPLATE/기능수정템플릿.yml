@@ -18,7 +18,6 @@ body:
 
         ## 기대 결과
         원래 기대했던 동작을 작성해주세요.
-
     validations:
       required: true
   - type: textarea
