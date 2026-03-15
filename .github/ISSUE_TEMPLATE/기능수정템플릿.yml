@@ -7,6 +7,18 @@ body:
       label: 📄 설명
       description: 수정할 기능에 대한 설명을 작성해 주세요.
       placeholder: 자세히 적을수록 좋습니다!
+      value: |
+        ## 버그 내용
+        어떤 문제가 발생했는지 작성해주세요.
+
+        ## 재현 방법
+        1.
+        2.
+        3.
+
+        ## 기대 결과
+        원래 기대했던 동작을 작성해주세요.
+
     validations:
       required: true
   - type: textarea
