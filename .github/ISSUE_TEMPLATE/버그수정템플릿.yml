@@ -6,7 +6,6 @@ body:
     attributes:
       label: 📄 버그 설명
       description: 버그에 대한 설명을 작성해 주세요.
-      placeholder: 자세히 적을수록 좋습니다!
       value: |
         ## 버그 내용
         어떤 문제가 발생했는지 작성해주세요.
