@@ -12,6 +12,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import talkingpotatoes.pickplaceapi.global.domain.entity.BaseEntity;
@@ -26,6 +28,8 @@ import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class File extends BaseEntity {
 
     @Id
@@ -51,4 +55,7 @@ public class File extends BaseEntity {
 
     @Column(name = "file_manage_srl", length = 50)
     private String fileManageSrl; // 파일 관리 번호 (UUID)
+
+    @Column(name = "file_seq")
+    private Long fileSeq; // 파일 순번
 }
