@@ -15,6 +15,10 @@ import lombok.Getter;
 @Getter
 @AllArgsConstructor
 public enum ExceptionCode {
+    ERR_FILE_CREATE_DIRECTORY("파일 폴더 생성에 실패했습니다."),
+    ERR_FILE_SAVE("파일 저장에 실패했습니다."),
+    ERR_FILE_DELETE("파일 삭제에 실패했습니다."),
+    ERR_FILE_EXTENSION_NOT_MATCH("업로드할 수 없는 파일 확장자입니다."),
     ;
     private final String korErrorMessage;
 }
