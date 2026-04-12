@@ -42,6 +42,6 @@ public class Bookmark extends BaseEntity {
     @Column(name = "bmk_memo", columnDefinition = "TEXT")
     private String bmkMemo; // 북마크 메모
 
-    @Column(name = "bmk_rating", precision = 5, scale = 2)  // DECIMAL(5, 2), 전체 5자리 (숫자3, 소수점2)
+    @Column(name = "bmk_rating")
     private Double bmkRating; // 북마크 평가
 }

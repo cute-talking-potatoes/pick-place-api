@@ -49,9 +49,9 @@ public class Place extends BaseEntity {
     @Column(name = "pl_cd", length = 10)
     private String plCd; // 위치 우편번호
 
-    @Column(name = "pl_lat", precision = 10, scale = 7) // DECIMAL(10, 7), 전체 10자리 (숫자3, 소수점7)
+    @Column(name = "pl_lat")
     private Double plLat; // 위도
 
-    @Column(name = "pl_lng", precision = 10, scale = 7) // DECIMAL(10, 7), 전체 10자리 (숫자3, 소수점7)
+    @Column(name = "pl_lng")
     private Double plLng; // 경도
 }

@@ -44,7 +44,7 @@ public class PlaceReview extends BaseEntity {
     @Column(name = "pl_review_cont", columnDefinition = "TEXT")
     private String plReviewCont; // 후기 내용
 
-    @Column(name = "pl_review_rating", precision = 5, scale = 2)  // DECIMAL(5, 2), 전체 5자리 (숫자3, 소수점2)
+    @Column(name = "pl_review_rating")
     private Double plReviewRating; // 후기 별점
 
     @Column(name = "pl_review_sts")
