@@ -11,4 +11,4 @@ spring:
     password: pickplace
   jpa:
     hibernate:
-      ddl-auto: none # TODO - ?? none ?? ??
+      ddl-auto: none # TODO - 항상 none 인지 확인

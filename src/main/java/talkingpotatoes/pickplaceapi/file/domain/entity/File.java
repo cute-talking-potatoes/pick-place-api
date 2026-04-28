@@ -21,6 +21,7 @@ import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 
 /**
  * 파일 엔티티
+ *
  * @author : 박지혁
  * @since : 2026/03/08
  */
