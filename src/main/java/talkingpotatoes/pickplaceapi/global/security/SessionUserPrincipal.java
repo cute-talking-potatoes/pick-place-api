@@ -1,4 +1,4 @@
-package talkingpotatoes.pickplaceapi.global.config;
+package talkingpotatoes.pickplaceapi.global.security;
 
 import talkingpotatoes.pickplaceapi.user.domain.UserRole;
 
