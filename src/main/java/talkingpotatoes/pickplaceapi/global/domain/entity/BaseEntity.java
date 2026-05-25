@@ -2,7 +2,9 @@ package talkingpotatoes.pickplaceapi.global.domain.entity;
 
 import java.time.LocalDateTime;
 
+import org.springframework.data.annotation.CreatedBy;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedBy;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -21,9 +23,11 @@ import lombok.Getter;
 @EntityListeners(AuditingEntityListener.class)
 public class BaseEntity {
 
+    @CreatedBy
     @Column(name = "created_by", updatable = false)
     private String createdBy; // 생성자 (단순 기록용, FK X)
 
+    @LastModifiedBy
     @Column(name = "updated_by")
     private String updatedBy; // 수정자 (단순 기록용, FK X)
 

@@ -12,3 +12,11 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none # TODO - 항상 none 인지 확인
+  server:
+    servlet:
+      session:
+        timeout: 7d
+        cookie:
+          http-only: true
+          same-site: lax
+          secure: ${SESSION_COOKIE_SECURE:false}
