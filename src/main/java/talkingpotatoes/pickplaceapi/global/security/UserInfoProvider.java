@@ -1,10 +1,13 @@
 package talkingpotatoes.pickplaceapi.global.security;
 
+import static talkingpotatoes.pickplaceapi.global.exception.ExceptionCode.*;
+
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
+import talkingpotatoes.pickplaceapi.global.exception.AuthException;
 import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 import talkingpotatoes.pickplaceapi.user.domain.repository.UserRepository;
 
@@ -22,17 +25,20 @@ public class UserInfoProvider {
 
     public String getUserId() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null) {
-            throw new RuntimeException(); // TODO: 2026/05/25 회원처리에 대한 공통 예외가 추가되면 해당 예외를 던지도록 수정하기
+        if (authentication == null || !authentication.isAuthenticated()) {
+            throw new AuthException(ERR_AUTH_REQUIRED);
         }
-        SessionUserPrincipal principal = (SessionUserPrincipal)authentication.getPrincipal();
-        if (principal == null) {
-            throw new RuntimeException(); // TODO: 2026/05/25 회원처리에 대한 공통 예외가 추가되면 해당 예외를 던지도록 수정하기
+
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof SessionUserPrincipal sessionUserPrincipal)) {
+            throw new AuthException(ERR_AUTH_INVALID_SESSION);
         }
-        return principal.userId();
+
+        return sessionUserPrincipal.userId();
     }
 
     public User getUser() {
-        return userRepository.findByUserId(getUserId()).orElseThrow(RuntimeException::new); // TODO: 2026/05/25 회원처리에 대한 공통 예외가 추가되면 해당 예외를 던지도록 수정하기
+        return userRepository.findByUserId(getUserId())
+                .orElseThrow(() -> new AuthException(ERR_AUTH_USER_NOT_FOUND));
     }
 }

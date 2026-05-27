@@ -46,10 +46,11 @@ public class SecurityConfig {
                         // 로그인 전 접근이 필요한 인증 엔드포인트만 공개한다.
                         .requestMatchers(HttpMethod.GET, "/api/auth/csrf").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         // 나머지 인증 관련 조회/변경 API 는 로그인 세션이 필요하다.
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/auth/logout").authenticated()
-                        .anyRequest().permitAll()
+                        .anyRequest().authenticated()
                 )
                 // 필요할 때만 세션을 만들고, 세션이 존재하면 그 인증 상태를 사용한다.
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))

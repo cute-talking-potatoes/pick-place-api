@@ -1,6 +1,7 @@
 package talkingpotatoes.pickplaceapi.global.api;
 
 import lombok.Getter;
+import org.springframework.http.ResponseEntity;
 
 /**
  * 공통 API 응답
@@ -26,6 +27,22 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> success(String message, T data) {
         // 성공 응답 생성 방식을 한곳에 모아 컨트롤러 응답 형식을 통일한다.
         return new ApiResponse<>(true, message, data);
+    }
+
+    public static <T> ResponseEntity<ApiResponse<T>> ok(String message, T data) {
+        return ResponseEntity.ok(success(message, data));
+    }
+
+    public static ResponseEntity<ApiResponse<Void>> ok(String message) {
+        return ok(message, null);
+    }
+
+    public static <T> ResponseEntity<ApiResponse<T>> ok(SuccessCode code, T data) {
+        return ok(code.getMessage(), data);
+    }
+
+    public static ResponseEntity<ApiResponse<Void>> ok(SuccessCode code) {
+        return ok(code.getMessage());
     }
 
     public static <T> ApiResponse<T> error(String message, T data) {

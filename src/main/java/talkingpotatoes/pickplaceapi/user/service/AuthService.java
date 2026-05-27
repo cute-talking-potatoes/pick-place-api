@@ -1,17 +1,18 @@
 package talkingpotatoes.pickplaceapi.user.service;
 
+import static talkingpotatoes.pickplaceapi.global.exception.ExceptionCode.*;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.web.server.ResponseStatusException;
+import talkingpotatoes.pickplaceapi.global.exception.AuthException;
 import talkingpotatoes.pickplaceapi.user.dto.AuthResponse;
 import talkingpotatoes.pickplaceapi.user.dto.SignUpRequest;
 import talkingpotatoes.pickplaceapi.user.domain.entity.User;
@@ -78,11 +79,11 @@ public class AuthService {
     public AuthResponse login(String userId, String password, HttpServletRequest servletRequest) {
         // 로그인 비교도 회원가입과 같은 규칙으로 정규화한 userId 기준으로 조회한다.
         User user = userRepository.findByUserId(normalizeUserId(userId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다."));
+                .orElseThrow(() -> new AuthException(ERR_AUTH_INVALID_CREDENTIALS));
 
         // 비밀번호 불일치 여부는 사용자 존재 여부와 같은 메시지로 응답해 계정 추측을 어렵게 한다.
         if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "아이디 또는 비밀번호가 올바르지 않습니다.");
+            throw new AuthException(ERR_AUTH_INVALID_CREDENTIALS);
         }
 
         // 로그인 성공 시점만 마지막 로그인 시간으로 기록한다.
@@ -110,10 +111,10 @@ public class AuthService {
     private void validateSignUpUniqueness(String normalizedUserId, String normalizedEmail) {
         // userId 와 email 을 각각 분리 검사해 클라이언트가 어떤 값이 충돌했는지 바로 알 수 있게 한다.
         if (userRepository.findByUserId(normalizedUserId).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다.");
+            throw new AuthException(ERR_AUTH_DUPLICATED_USER_ID);
         }
         if (userRepository.findByEmail(normalizedEmail).isPresent()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "이미 가입된 이메일입니다.");
+            throw new AuthException(ERR_AUTH_DUPLICATED_EMAIL);
         }
     }
 
@@ -121,17 +122,17 @@ public class AuthService {
         // 세션이 없으면 인증 상태가 없다는 뜻이므로 바로 401 로 처리한다.
         HttpSession session = request.getSession(false);
         if (session == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+            throw new AuthException(ERR_AUTH_REQUIRED);
         }
 
         // 세션에는 최소 식별자만 저장하고, 실제 사용자 정보는 매 요청마다 DB 기준으로 다시 확인한다.
         Object userSrlValue = session.getAttribute(AUTH_SESSION_USER_SRL);
         if (!(userSrlValue instanceof Long userSrl)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
+            throw new AuthException(ERR_AUTH_REQUIRED);
         }
 
         return userRepository.findById(userSrl)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "현재 사용자 정보를 찾을 수 없습니다."));
+                .orElseThrow(() -> new AuthException(ERR_AUTH_USER_NOT_FOUND));
     }
 
     private void establishSession(HttpServletRequest request, Long userSrl) {
@@ -164,41 +165,41 @@ public class AuthService {
     // 비밀번호 확인
     private void validatePasswordConfirmation(String password, String passwordConfirm) {
         if (!StringUtils.hasText(password) || !Objects.equals(password, passwordConfirm)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "비밀번호 확인이 일치하지 않습니다.");
+            throw new AuthException(ERR_AUTH_PASSWORD_CONFIRM_MISMATCH);
         }
     }
 
     // 비밀번호 규칙
     private void validatePasswordRules(String password) {
         if (!StringUtils.hasText(password) || password.length() < 8) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "비밀번호는 8자 이상으로 입력해 주세요.");
+            throw new AuthException(ERR_AUTH_PASSWORD_TOO_SHORT);
         }
 
         // 최소 규칙만 서비스에서 강제하고, 더 복잡한 정책이 생기면 이 메서드에서 확장한다.
         boolean hasLetter = password.chars().anyMatch(Character::isLetter);
         boolean hasDigit = password.chars().anyMatch(Character::isDigit);
         if (!hasLetter || !hasDigit) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "비밀번호는 영문과 숫자를 모두 포함해 주세요.");
+            throw new AuthException(ERR_AUTH_PASSWORD_RULE_NOT_MATCH);
         }
     }
 
     private String normalizeUserId(String userId) {
         if (!StringUtils.hasText(userId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "아이디를 입력해 주세요.");
+            throw new AuthException(ERR_AUTH_USER_ID_REQUIRED);
         }
         return userId.trim().toLowerCase(Locale.ROOT);
     }
 
     private String normalizeEmail(String email) {
         if (!StringUtils.hasText(email)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이메일을 입력해 주세요.");
+            throw new AuthException(ERR_AUTH_EMAIL_REQUIRED);
         }
         return email.trim().toLowerCase(Locale.ROOT);
     }
 
     private String normalizeNickname(String nickname) {
         if (!StringUtils.hasText(nickname)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "닉네임을 입력해 주세요.");
+            throw new AuthException(ERR_AUTH_NICKNAME_REQUIRED);
         }
         return nickname.trim();
     }
