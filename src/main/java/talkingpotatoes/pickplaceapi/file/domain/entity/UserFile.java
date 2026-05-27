@@ -10,6 +10,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import talkingpotatoes.pickplaceapi.global.domain.entity.BaseEntity;
@@ -17,6 +19,7 @@ import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 
 /**
  * 회원 파일 엔티티
+ *
  * @author : 박지혁
  * @since : 2026/03/08
  */
@@ -24,6 +27,8 @@ import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class UserFile extends BaseEntity {
 
     @Id

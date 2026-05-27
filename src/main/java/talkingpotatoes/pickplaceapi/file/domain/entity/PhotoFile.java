@@ -1,7 +1,5 @@
 package talkingpotatoes.pickplaceapi.file.domain.entity;
 
-import java.time.LocalDateTime;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,6 +10,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import talkingpotatoes.pickplaceapi.global.domain.entity.BaseEntity;
@@ -19,6 +19,7 @@ import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 
 /**
  * 사진첩 파일 엔티티
+ *
  * @author : 박지혁
  * @since : 2026/03/08
  */
@@ -26,6 +27,8 @@ import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
+@Builder
 public class PhotoFile extends BaseEntity {
 
     @Id
