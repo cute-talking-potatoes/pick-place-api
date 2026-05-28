@@ -24,6 +24,7 @@ class GlobalExceptionHandlerTest {
         assertEquals(401, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertFalse(response.getBody().isSuccess());
+        assertEquals(ERR_AUTH_REQUIRED.name(), response.getBody().getCode());
         assertEquals("로그인이 필요합니다.", response.getBody().getMessage());
         assertNull(response.getBody().getData());
     }
@@ -37,6 +38,7 @@ class GlobalExceptionHandlerTest {
         assertEquals(400, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertFalse(response.getBody().isSuccess());
+        assertEquals(ERR_FILE_NOT_EXIST.name(), response.getBody().getCode());
         assertEquals("존재하지 않는 파일입니다.", response.getBody().getMessage());
         assertNull(response.getBody().getData());
     }

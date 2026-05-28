@@ -37,7 +37,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handlePickPlace(PickPlaceException exception) {
         // 도메인에서 의도적으로 던진 공통 예외는 예외 코드에 지정된 HTTP 상태를 유지한다.
         return ResponseEntity.status(exception.getStatus())
-                .body(ApiResponse.error(exception.getMessage(), null));
+                .body(ApiResponse.error(exception.getCode(), exception.getMessage(), null));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

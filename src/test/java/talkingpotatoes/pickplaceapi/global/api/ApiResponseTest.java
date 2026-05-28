@@ -3,6 +3,8 @@ package talkingpotatoes.pickplaceapi.global.api;
 import static org.junit.jupiter.api.Assertions.*;
 import static talkingpotatoes.pickplaceapi.global.api.SuccessCode.*;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,7 @@ class ApiResponseTest {
         assertEquals(200, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
+        assertNull(response.getBody().getCode());
         assertEquals("CSRF 토큰을 발급했습니다.", response.getBody().getMessage());
         assertEquals(data, response.getBody().getData());
     }
@@ -35,7 +38,18 @@ class ApiResponseTest {
         assertEquals(200, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertTrue(response.getBody().isSuccess());
+        assertNull(response.getBody().getCode());
         assertEquals("로그아웃 성공", response.getBody().getMessage());
         assertNull(response.getBody().getData());
+    }
+
+    @Test
+    void null_필드는_JSON_응답에서_제외한다() {
+        // When
+        JsonInclude include = ApiResponse.class.getAnnotation(JsonInclude.class);
+
+        // Then
+        assertNotNull(include);
+        assertEquals(JsonInclude.Include.NON_NULL, include.value());
     }
 }
