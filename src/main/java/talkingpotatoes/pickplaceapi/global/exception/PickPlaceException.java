@@ -1,5 +1,7 @@
 package talkingpotatoes.pickplaceapi.global.exception;
 
+import org.springframework.http.HttpStatus;
+
 import lombok.Getter;
 
 /**
@@ -14,12 +16,14 @@ import lombok.Getter;
  */
 @Getter
 public class PickPlaceException extends RuntimeException {
+    private final HttpStatus status;
     private final String code;
     private final String message;
 
     // 기본 예외 생성자
     public PickPlaceException(ExceptionCode code) {
         super(code.getKorErrorMessage());
+        this.status = code.getStatus();
         this.code = code.name();
         this.message = code.getKorErrorMessage();
     }
@@ -27,6 +31,7 @@ public class PickPlaceException extends RuntimeException {
     // 추가 메시지를 포함한 예외 생성자
     public PickPlaceException(ExceptionCode code, String extraMessage) {
         super(code.getKorErrorMessage() + "\n📝 추가 메시지: " + extraMessage);
+        this.status = code.getStatus();
         this.code = code.name();
         this.message = code.getKorErrorMessage() + "\n📝 추가 메시지: " + extraMessage;
     }

@@ -1,5 +1,7 @@
 package talkingpotatoes.pickplaceapi.user.controller;
 
+import static talkingpotatoes.pickplaceapi.global.api.SuccessCode.*;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
@@ -40,7 +42,7 @@ public class AuthController {
                 "parameterName", csrfToken.getParameterName(),
                 "token", csrfToken.getToken()
         );
-        return ResponseEntity.ok(ApiResponse.success("CSRF 토큰을 발급했습니다.", data));
+        return ApiResponse.ok(SUC_AUTH_CSRF_TOKEN_ISSUED, data);
     }
 
     // 로그인
@@ -50,7 +52,7 @@ public class AuthController {
             HttpServletRequest httpServletRequest
     ) {
         AuthResponse authResponse = authService.login(request.getUserId(), request.getPassword(), httpServletRequest);
-        return ResponseEntity.ok(ApiResponse.success("로그인 성공", authResponse));
+        return ApiResponse.ok(SUC_AUTH_LOGIN, authResponse);
     }
 
     // 회원가입
@@ -60,13 +62,13 @@ public class AuthController {
             HttpServletRequest httpServletRequest
     ) {
         AuthResponse authResponse = authService.register(request, httpServletRequest);
-        return ResponseEntity.ok(ApiResponse.success("회원가입이 완료되었습니다.", authResponse));
+        return ApiResponse.ok(SUC_AUTH_SIGNUP, authResponse);
     }
 
     // 현재 로그인 사용자 조회
     @GetMapping("/me")
     public ResponseEntity<ApiResponse<AuthResponse>> me(HttpServletRequest request) {
-        return ResponseEntity.ok(ApiResponse.success("현재 사용자 조회 성공", authService.me(request)));
+        return ApiResponse.ok(SUC_AUTH_CURRENT_USER_FOUND, authService.me(request));
     }
 
     // 로그아웃
@@ -76,6 +78,6 @@ public class AuthController {
             HttpServletResponse response
     ) {
         authService.logout(request, response);
-        return ResponseEntity.ok(ApiResponse.success("로그아웃 성공", null));
+        return ApiResponse.ok(SUC_AUTH_LOGOUT);
     }
 }
