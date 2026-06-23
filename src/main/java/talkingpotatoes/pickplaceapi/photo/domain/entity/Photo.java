@@ -30,6 +30,7 @@ import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Photo extends BaseEntity {
 
+    // TODO: 2026/06/23 이 엔티티가 필요한가??? PhotoFile이 존재하고, 어차피 사진과 장소는 항상 같이 존재하지않나? Photo 엔티티만 따로 존재하는 경우가 없을거같은데 따로 존재한다고하고 게시물에 넣는다해도 PhotoFile로 처리하면 될거같은느낌..?
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "photo_srl")

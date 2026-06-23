@@ -30,6 +30,6 @@ public class Prefer extends BaseEntity {
     @Column(name = "pref_cate", length = 100)
     private String prefCate; // 취향 카테고리
 
-    @Column(name = "pref_Type", length = 100)
+    @Column(name = "pref_type", length = 100)
     private String prefType; // 취향 타입
 }

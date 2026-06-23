@@ -36,6 +36,10 @@ public enum ExceptionCode {
     ERR_AUTH_USER_ID_REQUIRED(HttpStatus.BAD_REQUEST, "아이디를 입력해 주세요."),
     ERR_AUTH_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, "이메일을 입력해 주세요."),
     ERR_AUTH_NICKNAME_REQUIRED(HttpStatus.BAD_REQUEST, "닉네임을 입력해 주세요."),
+
+    ERR_PLACE_INVALID_TITLE(HttpStatus.BAD_REQUEST, "장소명이 유효하지 않습니다."),
+    ERR_PLACE_INVALID_LATITUDE(HttpStatus.BAD_REQUEST, "위도가 유효한 범위가 아닙니다."),
+    ERR_PLACE_INVALID_LONGITUDE(HttpStatus.BAD_REQUEST, "경도가 유효한 범위가 아닙니다."),
     ;
     private final HttpStatus status;
     private final String korErrorMessage;

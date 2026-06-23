@@ -13,9 +13,13 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import talkingpotatoes.pickplaceapi.global.domain.entity.BaseEntity;
+import talkingpotatoes.pickplaceapi.global.exception.ExceptionCode;
+import talkingpotatoes.pickplaceapi.global.exception.PlaceException;
+import talkingpotatoes.pickplaceapi.place.dto.PlaceRequest;
 
 /**
  * 위치 엔티티
+ *
  * @author : 박지혁
  * @since : 2026/03/08
  */
@@ -24,6 +28,11 @@ import talkingpotatoes.pickplaceapi.global.domain.entity.BaseEntity;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Place extends BaseEntity {
+
+    private final static double MIN_LATITUDE = -90; // 최소 위도
+    private final static double MAX_LATITUDE = 90; // 최대 위도
+    private final static double MIN_LONGITUDE = -180; // 최소 경도
+    private final static double MAX_LONGITUDE = 180; // 최대 경도
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,4 +63,36 @@ public class Place extends BaseEntity {
 
     @Column(name = "pl_lng")
     private Double plLng; // 경도
+
+    public Place(PlaceRequest request) {
+        validCheck(request);
+        // this.prefer = prefer; TODO: 취향 추가하기
+        this.plNm = request.getPlNm();
+        this.plDesc = request.getPlDesc();
+        this.plAddr1 = request.getPlAddr1();
+        this.plAddr2 = request.getPlAddr2();
+        this.plCd = request.getPlCd();
+        this.plLat = request.getPlLat();
+        this.plLng = request.getPlLng();
+    }
+
+    public void validCheck(PlaceRequest request) {
+        if (request.getPlNm() == null || request.getPlNm().isBlank()) { // TODO: 글자수도 여기서 넣기 or 요청에서 검증하기?
+            throw new PlaceException(ExceptionCode.ERR_PLACE_INVALID_TITLE);
+        }
+        isValidLatitude(request.getPlLat());
+        isValidLongitude(request.getPlLng());
+    }
+
+    public static void isValidLatitude(Double latitude) {
+        if (latitude == null || latitude < MIN_LATITUDE || latitude > MAX_LATITUDE) {
+            throw new PlaceException(ExceptionCode.ERR_PLACE_INVALID_LATITUDE);
+        }
+    }
+
+    public static void isValidLongitude(Double longitude) {
+        if (longitude == null || longitude < MIN_LONGITUDE || longitude > MAX_LONGITUDE) {
+            throw new PlaceException(ExceptionCode.ERR_PLACE_INVALID_LONGITUDE);
+        }
+    }
 }

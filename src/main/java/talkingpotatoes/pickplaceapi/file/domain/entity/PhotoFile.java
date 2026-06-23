@@ -15,6 +15,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import talkingpotatoes.pickplaceapi.global.domain.entity.BaseEntity;
+import talkingpotatoes.pickplaceapi.place.domain.entity.Place;
 import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 
 /**
@@ -43,4 +44,7 @@ public class PhotoFile extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_srl")
     private User user; // 회원 (업로더)
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Place place; // 장소
 }
