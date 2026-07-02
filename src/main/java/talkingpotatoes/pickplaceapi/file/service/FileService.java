@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -36,8 +37,10 @@ import talkingpotatoes.pickplaceapi.file.domain.prop.FileProp;
 import talkingpotatoes.pickplaceapi.file.repository.FileRepository;
 import talkingpotatoes.pickplaceapi.file.repository.PhotoFileRepository;
 import talkingpotatoes.pickplaceapi.file.repository.UserFileRepository;
+import talkingpotatoes.pickplaceapi.global.exception.ExceptionCode;
 import talkingpotatoes.pickplaceapi.global.exception.FileException;
 import talkingpotatoes.pickplaceapi.global.security.UserInfoProvider;
+import talkingpotatoes.pickplaceapi.place.domain.entity.Place;
 import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 
 /**
@@ -57,59 +60,44 @@ public class FileService {
     private final PhotoFileRepository photoFileRepository;
     private final UserFileRepository userFileRepository;
 
-    /**
-     * 파일 업로드
-     *
-     * @param files    업로드할 파일들
-     * @param fileType 업로드할 파일 구분
-     */
     @Transactional
-    public void upload(List<MultipartFile> files, FileType fileType) {
+    public void upload(List<MultipartFile> files) {
         String uuid = UUID.randomUUID().toString(); // 파일 관리 번호
-
         Path dirPath = Paths.get(fileProp.getFilePath(), uuid); // UUID 폴더
-
-        try {
-            createDirPath(dirPath);
-        } catch (IOException e) {
-            throw new FileException(ERR_FILE_CREATE_DIRECTORY, e.getMessage());
-        }
-
-        saveFile(dirPath, uuid, 1, files, fileType);
+        createDirPath(dirPath);
+        saveFile(dirPath, uuid, 1, files, this::saveFileMetadata);
     }
 
-    /**
-     * 파일 수정 (추가 업로드)
-     *
-     * @param files    업로드할 파일들
-     * @param fileType 업로드할 파일 구분
-     * @param uuid     업로드할 파일 UUID
-     */
     @Transactional
-    public void update(List<MultipartFile> files, FileType fileType, String uuid) {
+    public void uploadImage(List<MultipartFile> files, Place place) {
+        String uuid = UUID.randomUUID().toString(); // 파일 관리 번호
+        Path dirPath = Paths.get(fileProp.getFilePath(), uuid); // UUID 폴더
+        createDirPath(dirPath);
+        saveFile(dirPath, uuid, 1, files, fileMetadata -> saveImageFileMetadata(fileMetadata, place));
+    }
+
+    @Transactional
+    public void update(List<MultipartFile> files, String uuid) {
         checkUUID(uuid);
 
         List<File> fileList = fileRepository.findByUUID(uuid);
-        long sequence = fileList.stream()
-                .max(Comparator.comparing(File::getFileSeq)) // 저장된 fileSeq 중 가장 큰 값을 찾기
-                .map(f -> {
-                    if (!hasAuth(f)) {
-                        throw new FileException(ERR_FILE_UPDATE, "파일을 추가할 권한이 존재하지 않습니다.");
-                    }
-                    return f.getFileSeq() + 1;
-                })
-                .orElseThrow(() -> new FileException(
-                        ERR_FILE_SAVE)); // 존재한다면 해당 fileSeq + 1 존재하지 않는다면 수정할 수 없는 파일 / 최초 업로드부터 수행 필수
+        long sequence = getFileSequence(fileList);
 
         Path dirPath = Paths.get(fileProp.getFilePath(), uuid); // UUID 폴더
+        createDirPath(dirPath);
+        saveFile(dirPath, uuid, sequence, files, this::saveFileMetadata);
+    }
 
-        try {
-            createDirPath(dirPath);
-        } catch (IOException e) {
-            throw new FileException(ERR_FILE_CREATE_DIRECTORY, e.getMessage());
-        }
+    @Transactional
+    public void updateImage(List<MultipartFile> files, String uuid, Place place) {
+        checkUUID(uuid);
 
-        saveFile(dirPath, uuid, sequence, files, fileType);
+        List<File> fileList = fileRepository.findByUUID(uuid);
+        long sequence = getFileSequence(fileList);
+
+        Path dirPath = Paths.get(fileProp.getFilePath(), uuid); // UUID 폴더
+        createDirPath(dirPath);
+        saveFile(dirPath, uuid, sequence, files, fileMetadata -> saveImageFileMetadata(fileMetadata, place));
     }
 
     // 파일 삭제
@@ -136,31 +124,47 @@ public class FileService {
         return downloadFileZip(uuid, headers, filesToDownload);
     }
 
-    /**
-     * 파일 저장 로직
-     *
-     * @param dirPath  파일 저장할 폴더 경로
-     * @param uuid     파일 관리 번호
-     * @param sequence 파일 순번
-     * @param files    파일 리스트
-     * @param fileType 저장할 파일 타입
-     */
-    private void saveFile(Path dirPath, String uuid, long sequence, List<MultipartFile> files, FileType fileType) {
-        List<Path> successfullySavedFiles = new ArrayList<>(); // 저장에 성공한 파일 경로 (한건이라도 실패하면 모두 삭제하기 위해 사용)
+    private void saveFile(
+            Path dirPath, String uuid, long sequence, List<MultipartFile> files, Consumer<FileMetadata> saveMethod
+    ) {
 
+        List<Path> successfullySavedFiles = new ArrayList<>(); // 저장에 성공한 파일 경로 (한건이라도 실패하면 모두 삭제하기 위해 사용)
         for (MultipartFile file : files) {
-            FileMetadata fileMetadata = FileMetadata.create(file, dirPath, uuid, sequence, fileType);
+            FileMetadata fileMetadata = FileMetadata.create(file, dirPath, uuid, sequence, FileType.USER);
             checkFileExtension(fileMetadata.extension(), successfullySavedFiles);
             savePhysicalFile(fileMetadata);
-            saveFileMetadata(
-                    fileMetadata); // TODO: 2026/05/25 여기서 예외가 발생하면 물리 파일 삭제 로직 필요 (스케줄러로 파일 정보 읽어서 매칭안되는 파일 제거하는 로직 추가?)
+            saveMethod.accept(fileMetadata);
             successfullySavedFiles.add(fileMetadata.filePath());
             sequence++; // 파일 순번 증가
         }
     }
 
     private void saveFileMetadata(FileMetadata fileMetadata) {
+        // TODO: 2026/05/25 여기서 예외가 발생하면 물리 파일 삭제 로직 필요 (스케줄러로 파일 정보 읽어서 매칭안되는 파일 제거하는 로직 추가?)
         User user = userInfoProvider.getUser();
+        File fileEntity = saveFileEntity(fileMetadata, user);
+
+        UserFile userFile = UserFile.builder()
+                .file(fileEntity)
+                .user(user)
+                .build();
+        userFileRepository.save(userFile);
+    }
+
+    private void saveImageFileMetadata(FileMetadata fileMetadata, Place place) {
+        // TODO: 2026/05/25 여기서 예외가 발생하면 물리 파일 삭제 로직 필요 (스케줄러로 파일 정보 읽어서 매칭안되는 파일 제거하는 로직 추가?)
+        User user = userInfoProvider.getUser();
+        File fileEntity = saveFileEntity(fileMetadata, user);
+
+        PhotoFile photoFile = PhotoFile.builder()
+                .file(fileEntity)
+                .user(user)
+                .place(place)
+                .build();
+        photoFileRepository.save(photoFile);
+    }
+
+    private File saveFileEntity(FileMetadata fileMetadata, User user) {
         File fileEntity = File.builder()
                 .user(user)
                 .fileNm(fileMetadata.originalName())
@@ -170,27 +174,18 @@ public class FileService {
                 .fileManageSrl(fileMetadata.uuid())
                 .fileSeq(fileMetadata.sequence())
                 .build();
-        fileRepository.save(fileEntity);
-
-        if (fileMetadata.fileType() == FileType.PHOTO) { // 사진 파일이라면
-            PhotoFile photoFile = PhotoFile.builder()
-                    .file(fileEntity)
-                    .user(user)
-                    .build();
-            photoFileRepository.save(photoFile);
-        } else if (fileMetadata.fileType() == FileType.USER) { // 회원 파일이라면
-            UserFile userFile = UserFile.builder()
-                    .file(fileEntity)
-                    .user(user)
-                    .build();
-            userFileRepository.save(userFile);
-        }
+        return fileRepository.save(fileEntity);
     }
 
     // 해당 경로에 파일이 존재하는지 확인하고 존재하지 않는다면 폴더를 생성한다.
-    private void createDirPath(Path dirPath) throws IOException {
-        if (!Files.exists(dirPath)) { // 폴더가 존재하지 않는다면
+    private void createDirPath(Path dirPath) {
+        if (Files.exists(dirPath)) { // 폴더가 존재한다면
+            return;
+        }
+        try {
             Files.createDirectories(dirPath); // 폴더 생성
+        } catch (IOException e) {
+            throw new FileException(ERR_FILE_CREATE_DIRECTORY, e.getMessage());
         }
     }
 
@@ -200,6 +195,18 @@ public class FileService {
         } catch (IOException e) {
             throw new FileException(ERR_FILE_SAVE, e.getMessage());
         }
+    }
+
+    private long getFileSequence(List<File> fileList) {
+        return fileList.stream() // 존재한다면 해당 fileSeq + 1 존재하지 않는다면 수정할 수 없는 파일 / 최초 업로드부터 수행 필수
+                .max(Comparator.comparing(File::getFileSeq)) // 저장된 fileSeq 중 가장 큰 값을 찾기
+                .map(f -> {
+                    if (!hasAuth(f)) {
+                        throw new FileException(ExceptionCode.ERR_FILE_UPDATE, "파일을 추가할 권한이 존재하지 않습니다.");
+                    }
+                    return f.getFileSeq() + 1;
+                })
+                .orElseThrow(() -> new FileException(ExceptionCode.ERR_FILE_UPDATE));
     }
 
     private void deleteFile(File file) {

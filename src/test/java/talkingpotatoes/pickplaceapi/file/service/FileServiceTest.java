@@ -36,6 +36,8 @@ import talkingpotatoes.pickplaceapi.file.repository.PhotoFileRepository;
 import talkingpotatoes.pickplaceapi.file.repository.UserFileRepository;
 import talkingpotatoes.pickplaceapi.global.exception.FileException;
 import talkingpotatoes.pickplaceapi.global.security.UserInfoProvider;
+import talkingpotatoes.pickplaceapi.place.domain.entity.Place;
+import talkingpotatoes.pickplaceapi.place.dto.PlaceRequest;
 import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 
 /**
@@ -68,7 +70,6 @@ class FileServiceTest {
 
     User user = createMockUser(CURRENT_USER_ID);
 
-
     private File createFileEntity(String path, String name, String uuid, long seq, String userId) {
         return File.builder()
                 .user(createMockUser(userId))
@@ -90,6 +91,12 @@ class FileServiceTest {
                 .fileSeq(seq)
                 .uploadedAt(LocalDateTime.now())
                 .build();
+    }
+
+    private Place createPlaceEntity() {
+        PlaceRequest request = new PlaceRequest("경복궁", "", "서울 종로구 사직로 161 경복궁", "", "03045", 37.5786111111,
+                126.9772222222);
+        return new Place(request);
     }
 
     private User createMockUser(String userId) {
@@ -139,7 +146,7 @@ class FileServiceTest {
         );
 
         // When
-        fileService.upload(List.of(file), FileType.PHOTO);
+        fileService.uploadImage(List.of(file), createPlaceEntity());
 
         // Then
         verify(fileRepository).save(argThat(f ->
@@ -167,7 +174,7 @@ class FileServiceTest {
         );
 
         // When
-        fileService.upload(List.of(file), FileType.USER);
+        fileService.upload(List.of(file));
 
         // Then
         verify(fileRepository).save(argThat(f ->
@@ -194,7 +201,7 @@ class FileServiceTest {
         );
 
         // When & Then
-        assertThrows(FileException.class, () -> fileService.upload(List.of(file), FileType.PHOTO));
+        assertThrows(FileException.class, () -> fileService.upload(List.of(file)));
 
         verify(fileRepository, never()).save(any(File.class));
         verify(photoFileRepository, never()).save(any(PhotoFile.class));
@@ -224,7 +231,7 @@ class FileServiceTest {
         // When & Then
         assertThrows(
                 FileException.class,
-                () -> fileService.upload(List.of(successFile, failFile), FileType.PHOTO)
+                () -> fileService.upload(List.of(successFile, failFile))
         );
 
         assertEquals(0, countRegularFiles(tempDir));
@@ -257,7 +264,7 @@ class FileServiceTest {
         );
 
         // When
-        fileService.update(List.of(file), FileType.USER, uuid);
+        fileService.update(List.of(file), uuid);
 
         // Then
         verify(fileRepository).save(argThat(f ->
@@ -282,9 +289,10 @@ class FileServiceTest {
 
         // When & Then
         assertAll(
-                () -> assertThrows(FileException.class, () -> fileService.update(List.of(file), FileType.USER, null)),
-                () -> assertThrows(FileException.class, () -> fileService.update(List.of(file), FileType.USER, " ")),
-                () -> assertThrows(FileException.class, () -> fileService.update(List.of(file), FileType.USER, "invalid-uuid"))
+                () -> assertThrows(FileException.class, () -> fileService.update(List.of(file), null)),
+                () -> assertThrows(FileException.class, () -> fileService.update(List.of(file), " ")),
+                () -> assertThrows(FileException.class,
+                        () -> fileService.update(List.of(file), "invalid-uuid"))
         );
 
         verify(fileRepository, never()).findByUUID(any());
@@ -306,7 +314,7 @@ class FileServiceTest {
         );
 
         // When & Then
-        assertThrows(FileException.class, () -> fileService.update(List.of(file), FileType.USER, uuid));
+        assertThrows(FileException.class, () -> fileService.update(List.of(file), uuid));
 
         verify(fileRepository, never()).save(any(File.class));
         verify(userFileRepository, never()).save(any(UserFile.class));
@@ -332,7 +340,7 @@ class FileServiceTest {
         );
 
         // When & Then
-        assertThrows(FileException.class, () -> fileService.update(List.of(file), FileType.USER, uuid));
+        assertThrows(FileException.class, () -> fileService.update(List.of(file), uuid));
 
         verify(fileRepository, never()).save(any(File.class));
         verify(userFileRepository, never()).save(any(UserFile.class));
