@@ -15,18 +15,17 @@ import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockMultipartFile;
 
-import talkingpotatoes.pickplaceapi.file.domain.FileType;
 import talkingpotatoes.pickplaceapi.file.domain.entity.File;
 import talkingpotatoes.pickplaceapi.file.domain.entity.PhotoFile;
 import talkingpotatoes.pickplaceapi.file.domain.entity.UserFile;
@@ -51,7 +50,6 @@ class FileServiceTest {
     private static final String CURRENT_USER_ID = "CURRENT_USER";
     private static final String OTHER_USER_ID = "OTHER_USER";
 
-    @InjectMocks
     private FileService fileService;
 
     @Mock
@@ -69,6 +67,27 @@ class FileServiceTest {
     Path tempDir;
 
     User user = createMockUser(CURRENT_USER_ID);
+
+    @BeforeEach
+    void setUpFileService() {
+        LocalFileStorageService localFileStorageService = new LocalFileStorageService(fileProp);
+        FileMetadataService fileMetadataService = new FileMetadataService(
+                userInfoProvider,
+                fileRepository,
+                photoFileRepository,
+                userFileRepository
+        );
+        FileDownloadService fileDownloadService = new FileDownloadService(localFileStorageService);
+
+        fileService = new FileService(
+                fileProp,
+                userInfoProvider,
+                fileRepository,
+                localFileStorageService,
+                fileMetadataService,
+                fileDownloadService
+        );
+    }
 
     private File createFileEntity(String path, String name, String uuid, long seq, String userId) {
         return File.builder()
@@ -146,7 +165,7 @@ class FileServiceTest {
         );
 
         // When
-        fileService.uploadImage(List.of(file), createPlaceEntity());
+        fileService.uploadPhoto(List.of(file), createPlaceEntity());
 
         // Then
         verify(fileRepository).save(argThat(f ->
@@ -235,6 +254,29 @@ class FileServiceTest {
         );
 
         assertEquals(0, countRegularFiles(tempDir));
+    }
+
+    @Test
+    void 메타데이터저장에_실패하면_이미저장된_물리파일을_삭제한다() throws IOException {
+        // Given
+        setup();
+        setupCurrentUser();
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "test.jpg",
+                "image/jpeg",
+                "data".getBytes(StandardCharsets.UTF_8)
+        );
+
+        given(fileRepository.save(any(File.class))).willThrow(new RuntimeException("DB 저장 실패"));
+
+        // When & Then
+        assertThrows(RuntimeException.class, () -> fileService.upload(List.of(file)));
+
+        assertEquals(0, countRegularFiles(tempDir));
+        verify(userFileRepository, never()).save(any(UserFile.class));
+        verify(photoFileRepository, never()).save(any(PhotoFile.class));
     }
 
     /**
