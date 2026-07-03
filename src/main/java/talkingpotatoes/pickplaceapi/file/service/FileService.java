@@ -13,6 +13,8 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 
 import lombok.RequiredArgsConstructor;
@@ -93,21 +95,33 @@ public class FileService {
         Path dirPath = localFileStorageService.createDirectory(uuid);
         List<Path> savedFilePaths = new ArrayList<>();
 
-        try {
-            for (MultipartFile file : files) {
-                FileMetadata fileMetadata = FileMetadata.create(file, dirPath, uuid, sequence, FileType.USER);
-                validate(fileMetadata.extension());
+        registerRollbackFileCleanup(savedFilePaths); // 롤백 발생 시 파일 삭제 콜백 등록
 
-                savedFilePaths.add(fileMetadata.filePath());
-                localFileStorageService.save(fileMetadata);
-                saveMethod.accept(fileMetadata);
+        for (MultipartFile file : files) {
+            FileMetadata fileMetadata = FileMetadata.create(file, dirPath, uuid, sequence, FileType.USER);
+            validate(fileMetadata.extension());
 
-                sequence++;
-            }
-        } catch (RuntimeException e) {
-            localFileStorageService.deleteAll(savedFilePaths);
-            throw e;
+            savedFilePaths.add(fileMetadata.filePath());
+            localFileStorageService.save(fileMetadata);
+            saveMethod.accept(fileMetadata);
+
+            sequence++;
         }
+    }
+
+    private void registerRollbackFileCleanup(List<Path> savedFilePaths) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            throw new FileException(ERR_FILE_SAVE_INCORRECT_TRANSACTION);
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != TransactionSynchronization.STATUS_COMMITTED) { // 커밋이 아닐땐 모두 롤백처리
+                    localFileStorageService.deleteAll(savedFilePaths);
+                }
+            }
+        });
     }
 
     private long getFileSequence(String uuid) {

@@ -2,6 +2,7 @@ package talkingpotatoes.pickplaceapi.file.service;
 
 import static talkingpotatoes.pickplaceapi.global.exception.ExceptionCode.*;
 
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
@@ -15,12 +16,14 @@ import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
+import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import talkingpotatoes.pickplaceapi.file.domain.entity.File;
 import talkingpotatoes.pickplaceapi.global.exception.FileException;
 
@@ -30,6 +33,7 @@ import talkingpotatoes.pickplaceapi.global.exception.FileException;
  * @author : 박지혁
  * @since : 2026/07/02
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class FileDownloadService {
@@ -54,17 +58,22 @@ public class FileDownloadService {
         return createDownloadResource(headers, path, file.getFileNm(), "application/octet-stream");
     }
 
-    private UrlResource downloadZipFile(String uuid, HttpHeaders headers, List<File> filesToDownload) {
+    private Resource downloadZipFile(String uuid, HttpHeaders headers, List<File> filesToDownload) {
+        Path tempZipPath = null;
         try {
-            Path tempZipPath = Files.createTempFile(uuid, ".zip");
+            tempZipPath = Files.createTempFile(uuid, ".zip");
             makeZipFile(filesToDownload, tempZipPath);
 
             String filename = UUID.randomUUID() + ".zip";
             setUpDownloadHeader(filename, headers, tempZipPath);
             headers.add(HttpHeaders.CONTENT_TYPE, "application/zip");
-            return new UrlResource(tempZipPath.toUri());
+            return new DeleteOnCloseFileResource(tempZipPath);
         } catch (IOException e) {
+            deleteTempZipFile(tempZipPath);
             throw new FileException(ERR_FILE_FAIL_DOWNLOAD, e.getMessage());
+        } catch (RuntimeException e) {
+            deleteTempZipFile(tempZipPath);
+            throw e;
         }
     }
 
@@ -146,5 +155,41 @@ public class FileDownloadService {
             return filename.substring(0, idx) + "(" + count + ")" + filename.substring(idx);
         }
         return filename + "(" + count + ")";
+    }
+
+    private void deleteTempZipFile(Path tempZipPath) {
+        if (tempZipPath == null) {
+            return;
+        }
+
+        try {
+            Files.deleteIfExists(tempZipPath);
+        } catch (IOException e) {
+            log.warn("임시 ZIP파일을 삭제하는데 실패했습니다. 임시 파일 경로: {}", tempZipPath, e);
+        }
+    }
+
+    private class DeleteOnCloseFileResource extends FileSystemResource {
+
+        private final Path path;
+
+        DeleteOnCloseFileResource(Path path) {
+            super(path);
+            this.path = path;
+        }
+
+        @Override
+        public InputStream getInputStream() throws IOException {
+            return new FilterInputStream(Files.newInputStream(path)) {
+                @Override
+                public void close() throws IOException {
+                    try {
+                        super.close();
+                    } finally {
+                        deleteTempZipFile(path);
+                    }
+                }
+            };
+        }
     }
 }

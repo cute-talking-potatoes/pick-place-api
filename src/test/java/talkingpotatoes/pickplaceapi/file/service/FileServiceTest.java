@@ -25,6 +25,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import talkingpotatoes.pickplaceapi.file.domain.entity.File;
 import talkingpotatoes.pickplaceapi.file.domain.entity.PhotoFile;
@@ -165,7 +167,7 @@ class FileServiceTest {
         );
 
         // When
-        fileService.uploadPhoto(List.of(file), createPlaceEntity());
+        executeInTransaction(() -> fileService.uploadPhoto(List.of(file), createPlaceEntity()));
 
         // Then
         verify(fileRepository).save(argThat(f ->
@@ -193,7 +195,7 @@ class FileServiceTest {
         );
 
         // When
-        fileService.upload(List.of(file));
+        executeInTransaction(() -> fileService.upload(List.of(file)));
 
         // Then
         verify(fileRepository).save(argThat(f ->
@@ -220,7 +222,7 @@ class FileServiceTest {
         );
 
         // When & Then
-        assertThrows(FileException.class, () -> fileService.upload(List.of(file)));
+        assertThrows(FileException.class, () -> executeInTransaction(() -> fileService.upload(List.of(file))));
 
         verify(fileRepository, never()).save(any(File.class));
         verify(photoFileRepository, never()).save(any(PhotoFile.class));
@@ -250,7 +252,7 @@ class FileServiceTest {
         // When & Then
         assertThrows(
                 FileException.class,
-                () -> fileService.upload(List.of(successFile, failFile))
+                () -> executeInTransaction(() -> fileService.upload(List.of(successFile, failFile)))
         );
 
         assertEquals(0, countRegularFiles(tempDir));
@@ -272,7 +274,7 @@ class FileServiceTest {
         given(fileRepository.save(any(File.class))).willThrow(new RuntimeException("DB 저장 실패"));
 
         // When & Then
-        assertThrows(RuntimeException.class, () -> fileService.upload(List.of(file)));
+        assertThrows(RuntimeException.class, () -> executeInTransaction(() -> fileService.upload(List.of(file))));
 
         assertEquals(0, countRegularFiles(tempDir));
         verify(userFileRepository, never()).save(any(UserFile.class));
@@ -306,7 +308,7 @@ class FileServiceTest {
         );
 
         // When
-        fileService.update(List.of(file), uuid);
+        executeInTransaction(() -> fileService.update(List.of(file), uuid));
 
         // Then
         verify(fileRepository).save(argThat(f ->
@@ -539,10 +541,14 @@ class FileServiceTest {
         assertTrue(headers.getFirst(HttpHeaders.CONTENT_DISPOSITION).endsWith(".zip\""));
         assertEquals(String.valueOf(resource.contentLength()), headers.getFirst(HttpHeaders.CONTENT_LENGTH));
 
+        Path tempZipPath = resource.getFile().toPath();
+        assertTrue(Files.exists(tempZipPath));
+
         Map<String, String> zipContents = readZipContents(resource);
 
         assertEquals("data1", zipContents.get("a.jpg"));
         assertEquals("data2", zipContents.get("b.jpg"));
+        assertFalse(Files.exists(tempZipPath));
     }
 
     @Test
@@ -571,6 +577,28 @@ class FileServiceTest {
 
         assertEquals("data1", zipContents.get("same.jpg"));
         assertEquals("data2", zipContents.get("same(1).jpg"));
+    }
+
+    @Test
+    void ZIP파일생성중_실패하면_임시파일을_삭제한다() throws IOException {
+        // Given
+        String uuid = UUID.randomUUID().toString();
+
+        Path filePath = tempDir.resolve("a.jpg");
+        Path missingPath = tempDir.resolve("missing.jpg");
+
+        Files.write(filePath, "data".getBytes(StandardCharsets.UTF_8));
+
+        File f1 = createFileEntity(filePath.toString(), "a.jpg", uuid, 1);
+        File f2 = createFileEntity(missingPath.toString(), "missing.jpg", uuid, 2);
+
+        given(fileRepository.findByUUIDAndFileSeq(uuid, List.of(1L, 2L))).willReturn(List.of(f1, f2));
+
+        HttpHeaders headers = new HttpHeaders();
+
+        // When & Then
+        assertThrows(FileException.class, () -> fileService.download(uuid, List.of(1L, 2L), headers));
+        assertTrue(findTempZipFiles(uuid).isEmpty());
     }
 
     @Test
@@ -641,6 +669,30 @@ class FileServiceTest {
         }
     }
 
+    private void executeInTransaction(Runnable action) {
+        TransactionSynchronizationManager.initSynchronization();
+        int completionStatus = TransactionSynchronization.STATUS_COMMITTED;
+
+        try {
+            action.run();
+        } catch (RuntimeException | Error e) {
+            completionStatus = TransactionSynchronization.STATUS_ROLLED_BACK;
+            throw e;
+        } finally {
+            completeTransaction(completionStatus);
+        }
+    }
+
+    private void completeTransaction(int completionStatus) {
+        List<TransactionSynchronization> synchronizations = TransactionSynchronizationManager.getSynchronizations();
+
+        try {
+            synchronizations.forEach(synchronization -> synchronization.afterCompletion(completionStatus));
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
     private Map<String, String> readZipContents(Resource resource) throws IOException {
         Map<String, String> result = new java.util.HashMap<>();
 
@@ -670,5 +722,18 @@ class FileServiceTest {
         }
 
         return names;
+    }
+
+    private List<Path> findTempZipFiles(String uuid) throws IOException {
+        Path tempPath = Path.of(System.getProperty("java.io.tmpdir"));
+
+        try (var paths = Files.list(tempPath)) {
+            return paths.filter(Files::isRegularFile)
+                    .filter(path -> {
+                        String filename = path.getFileName().toString();
+                        return filename.startsWith(uuid) && filename.endsWith(".zip");
+                    })
+                    .toList();
+        }
     }
 }

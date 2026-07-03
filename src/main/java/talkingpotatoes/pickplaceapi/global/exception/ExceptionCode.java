@@ -23,6 +23,7 @@ public enum ExceptionCode {
     ERR_FILE_CANNOT_DOWNLOAD("다운로드 할 수 없는 파일입니다."),
     ERR_FILE_NOT_EXIST("존재하지 않는 파일입니다."),
     ERR_FILE_FAIL_DOWNLOAD("파일 다운로드에 실패했습니다."),
+    ERR_FILE_SAVE_INCORRECT_TRANSACTION("파일 저장은 트랜잭션 안에서만 수행되어야 합니다."),
 
     ERR_AUTH_REQUIRED(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다."),
     ERR_AUTH_INVALID_SESSION(HttpStatus.UNAUTHORIZED, "인증 정보가 올바르지 않습니다."),
