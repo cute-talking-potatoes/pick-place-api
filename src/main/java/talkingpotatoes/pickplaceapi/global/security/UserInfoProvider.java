@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 
 import lombok.RequiredArgsConstructor;
 import talkingpotatoes.pickplaceapi.global.exception.AuthException;
+import talkingpotatoes.pickplaceapi.global.exception.ExceptionCode;
+import talkingpotatoes.pickplaceapi.global.exception.FileException;
 import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 import talkingpotatoes.pickplaceapi.user.domain.repository.UserRepository;
 
@@ -40,5 +42,11 @@ public class UserInfoProvider {
     public User getUser() {
         return userRepository.findByUserId(getUserId())
                 .orElseThrow(() -> new AuthException(ERR_AUTH_USER_NOT_FOUND));
+    }
+
+    public void checkUserAuthorization(String userId) {
+        if (!getUserId().equals(userId)) {
+            throw new AuthException(ERR_AUTH_ACCESS_DENIED);
+        }
     }
 }

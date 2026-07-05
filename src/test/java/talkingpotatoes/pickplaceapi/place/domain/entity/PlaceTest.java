@@ -112,4 +112,69 @@ class PlaceTest {
         Place place = new Place(request);
         assertEquals(180.0, place.getPlLng());
     }
+
+    @Test
+    void 장소정보를_수정한다() {
+        Place place = new Place(new PlaceRequest(
+                "경복궁", "기존 설명", "서울 종로구 사직로 161 경복궁", "", "03045", 37.5786111111, 126.9772222222
+        ));
+        PlaceRequest updateRequest = new PlaceRequest(
+                "창덕궁", "수정 설명", "서울 종로구 율곡로 99", "돈화문", "03072", 37.5794444444, 126.9911111111
+        );
+
+        place.updatePlace(updateRequest);
+
+        assertAll(
+                () -> assertEquals("창덕궁", place.getPlNm()),
+                () -> assertEquals("수정 설명", place.getPlDesc()),
+                () -> assertEquals("서울 종로구 율곡로 99", place.getPlAddr1()),
+                () -> assertEquals("돈화문", place.getPlAddr2()),
+                () -> assertEquals("03072", place.getPlCd()),
+                () -> assertEquals(37.5794444444, place.getPlLat()),
+                () -> assertEquals(126.9911111111, place.getPlLng())
+        );
+    }
+
+    @Test
+    void 장소수정시_널값은_기존값을_유지한다() {
+        Place place = new Place(new PlaceRequest(
+                "경복궁", "기존 설명", "서울 종로구 사직로 161 경복궁", "상세", "03045", 37.5786111111, 126.9772222222
+        ));
+        PlaceRequest updateRequest = new PlaceRequest(
+                "창덕궁", null, null, null, null, null, null
+        );
+
+        place.updatePlace(updateRequest);
+
+        assertAll(
+                () -> assertEquals("창덕궁", place.getPlNm()),
+                () -> assertEquals("기존 설명", place.getPlDesc()),
+                () -> assertEquals("서울 종로구 사직로 161 경복궁", place.getPlAddr1()),
+                () -> assertEquals("상세", place.getPlAddr2()),
+                () -> assertEquals("03045", place.getPlCd()),
+                () -> assertEquals(37.5786111111, place.getPlLat()),
+                () -> assertEquals(126.9772222222, place.getPlLng())
+        );
+    }
+
+    @Test
+    void 장소수정시_빈장소명이면_기존값을_유지한다() {
+        Place place = new Place(new PlaceRequest(
+                "경복궁", "기존 설명", "서울 종로구 사직로 161 경복궁", "", "03045", 37.5786111111, 126.9772222222
+        ));
+        PlaceRequest updateRequest = new PlaceRequest(
+                " ", "수정 설명", "서울 종로구 율곡로 99", "", "03072", 37.5794444444, 126.9911111111
+        );
+
+        place.updatePlace(updateRequest);
+        assertAll(
+                () -> assertEquals("경복궁", place.getPlNm()),
+                () -> assertEquals("수정 설명", place.getPlDesc()),
+                () -> assertEquals("서울 종로구 율곡로 99", place.getPlAddr1()),
+                () -> assertEquals("", place.getPlAddr2()),
+                () -> assertEquals("03072", place.getPlCd()),
+                () -> assertEquals(37.5794444444, place.getPlLat()),
+                () -> assertEquals(126.9911111111, place.getPlLng())
+        );
+    }
 }

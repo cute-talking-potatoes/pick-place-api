@@ -12,6 +12,13 @@ spring:
   jpa:
     hibernate:
       ddl-auto: none # TODO - 항상 none 인지 확인
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 300MB
   server:
     servlet:
       session:

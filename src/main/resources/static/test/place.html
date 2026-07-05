@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pick Place 장소 테스트</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: #1f2933;
+            background: #f4f7f9;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: minmax(360px, 430px) 1fr;
+            height: 100vh;
+        }
+
+        .panel {
+            overflow-y: auto;
+            padding: 18px;
+            border-right: 1px solid #d7dee5;
+            background: #ffffff;
+        }
+
+        .map-area {
+            min-width: 0;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        h1 {
+            margin: 0 0 14px;
+            font-size: 24px;
+        }
+
+        h2 {
+            margin: 0 0 12px;
+            font-size: 17px;
+        }
+
+        section {
+            padding: 14px;
+            margin-bottom: 14px;
+            border: 1px solid #d7dee5;
+            border-radius: 8px;
+            background: #fbfcfd;
+        }
+
+        label {
+            display: block;
+            margin: 10px 0 5px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #344054;
+        }
+
+        input,
+        textarea,
+        button {
+            width: 100%;
+            font: inherit;
+        }
+
+        input,
+        textarea {
+            padding: 9px 10px;
+            border: 1px solid #cbd5df;
+            border-radius: 6px;
+            background: #ffffff;
+        }
+
+        textarea {
+            min-height: 70px;
+            resize: vertical;
+        }
+
+        button {
+            height: 38px;
+            margin-top: 10px;
+            border: 0;
+            border-radius: 6px;
+            color: #ffffff;
+            background: #2563eb;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        button.secondary {
+            color: #1f2933;
+            background: #e5ebf1;
+        }
+
+        button.danger {
+            background: #dc2626;
+        }
+
+        button:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .status {
+            min-height: 40px;
+            padding: 10px;
+            white-space: pre-wrap;
+            border-radius: 6px;
+            background: #eef2f6;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .selected {
+            padding: 10px;
+            border-radius: 6px;
+            background: #ecfdf5;
+            font-size: 13px;
+        }
+
+        .place-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .place-item {
+            padding: 10px;
+            border: 1px solid #d7dee5;
+            border-radius: 6px;
+            background: #ffffff;
+            cursor: pointer;
+        }
+
+        .place-item.active {
+            border-color: #2563eb;
+            background: #eff6ff;
+        }
+
+        .place-title {
+            font-weight: 800;
+        }
+
+        .place-meta {
+            margin-top: 4px;
+            color: #667085;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .photo-strip {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .photo-thumb {
+            display: block;
+            overflow: hidden;
+            border: 1px solid #d7dee5;
+            border-radius: 6px;
+            background: #eef2f6;
+            aspect-ratio: 1 / 1;
+        }
+
+        .photo-thumb img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .photo-empty {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 6px;
+            color: #667085;
+            background: #f1f5f9;
+            font-size: 12px;
+        }
+
+        .popup {
+            min-width: 190px;
+        }
+
+        .popup-title {
+            font-weight: 800;
+            margin-bottom: 4px;
+        }
+
+        .popup-photo-strip {
+            display: grid;
+            grid-template-columns: repeat(2, 72px);
+            gap: 6px;
+            margin-top: 8px;
+        }
+
+        .popup-photo-strip .photo-thumb {
+            width: 72px;
+            height: 72px;
+        }
+
+        @media (max-width: 900px) {
+            .layout {
+                grid-template-columns: 1fr;
+                grid-template-rows: minmax(520px, 60vh) 40vh;
+                height: auto;
+                min-height: 100vh;
+            }
+
+            .panel {
+                border-right: 0;
+                border-bottom: 1px solid #d7dee5;
+            }
+
+            .map-area {
+                min-height: 420px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="layout">
+    <aside class="panel">
+        <h1>장소 테스트</h1>
+
+        <section>
+            <h2>인증</h2>
+            <div class="row">
+                <div>
+                    <label for="userId">아이디</label>
+                    <input id="userId" value="tester">
+                </div>
+                <div>
+                    <label for="password">비밀번호</label>
+                    <input id="password" type="password" value="password1">
+                </div>
+            </div>
+            <label for="email">회원가입 이메일</label>
+            <input id="email" value="tester@example.com">
+            <label for="nickname">회원가입 닉네임</label>
+            <input id="nickname" value="테스터">
+            <button type="button" id="csrfButton">CSRF 발급</button>
+            <button type="button" id="signupButton" class="secondary">회원가입</button>
+            <button type="button" id="loginButton">로그인</button>
+            <button type="button" id="meButton" class="secondary">현재 사용자 확인</button>
+        </section>
+
+        <section>
+            <h2>장소 등록/수정</h2>
+            <label for="placeId">수정/삭제 대상 plSrl</label>
+            <input id="placeId" placeholder="목록이나 마커를 클릭하면 자동 입력">
+            <label for="plNm">장소명</label>
+            <input id="plNm" value="경복궁">
+            <label for="plDesc">설명</label>
+            <textarea id="plDesc">테스트 장소 설명</textarea>
+            <label for="plAddr1">주소 1</label>
+            <input id="plAddr1" value="서울 종로구 사직로 161 경복궁">
+            <label for="plAddr2">주소 2</label>
+            <input id="plAddr2" value="">
+            <label for="plCd">우편번호</label>
+            <input id="plCd" value="03045">
+            <div class="row">
+                <div>
+                    <label for="plLat">위도</label>
+                    <input id="plLat" type="number" step="0.0000000001" value="37.5786111111">
+                </div>
+                <div>
+                    <label for="plLng">경도</label>
+                    <input id="plLng" type="number" step="0.0000000001" value="126.9772222222">
+                </div>
+            </div>
+            <label for="files">사진 파일</label>
+            <input id="files" type="file" multiple accept="image/*">
+            <div class="selected" id="selectedText">지도 클릭 시 좌표가 입력됩니다.</div>
+            <button type="button" id="createButton">등록</button>
+            <button type="button" id="updateButton" class="secondary">수정</button>
+            <button type="button" id="deleteButton" class="danger">삭제</button>
+        </section>
+
+        <section>
+            <h2>지도 영역 조회</h2>
+            <div class="row">
+                <div>
+                    <label for="swLat">swLat</label>
+                    <input id="swLat" type="number" step="0.0000000001">
+                </div>
+                <div>
+                    <label for="swLng">swLng</label>
+                    <input id="swLng" type="number" step="0.0000000001">
+                </div>
+                <div>
+                    <label for="neLat">neLat</label>
+                    <input id="neLat" type="number" step="0.0000000001">
+                </div>
+                <div>
+                    <label for="neLng">neLng</label>
+                    <input id="neLng" type="number" step="0.0000000001">
+                </div>
+            </div>
+            <button type="button" id="boundsButton" class="secondary">현재 지도 영역 입력</button>
+            <button type="button" id="searchButton">조회</button>
+        </section>
+
+        <section>
+            <h2>조회 결과</h2>
+            <div id="placeList" class="place-list"></div>
+        </section>
+
+        <section>
+            <h2>상태</h2>
+            <div id="status" class="status">페이지 로드 완료. 먼저 CSRF 발급 후 로그인하세요.</div>
+        </section>
+    </aside>
+
+    <main class="map-area">
+        <div id="map"></div>
+    </main>
+</div>
+
+<script>
+    const state = {
+        csrfHeader: 'X-XSRF-TOKEN',
+        csrfToken: '',
+        markers: new Map(),
+        selectedMarker: null
+    };
+
+    const el = (id) => document.getElementById(id);
+
+    const map = L.map('map').setView([37.5786111111, 126.9772222222], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+    }).addTo(map);
+
+    map.on('click', (event) => {
+        setCoordinates(event.latlng.lat, event.latlng.lng);
+    });
+
+    map.on('moveend', fillBoundsFromMap);
+
+    el('csrfButton').addEventListener('click', issueCsrf);
+    el('signupButton').addEventListener('click', signup);
+    el('loginButton').addEventListener('click', login);
+    el('meButton').addEventListener('click', me);
+    el('createButton').addEventListener('click', createPlace);
+    el('updateButton').addEventListener('click', updatePlace);
+    el('deleteButton').addEventListener('click', deletePlace);
+    el('boundsButton').addEventListener('click', fillBoundsFromMap);
+    el('searchButton').addEventListener('click', searchPlaces);
+
+    fillBoundsFromMap();
+
+    function setStatus(message, payload) {
+        const detail = payload ? '\n' + JSON.stringify(payload, null, 2) : '';
+        el('status').textContent = message + detail;
+    }
+
+    function readCookie(name) {
+        return document.cookie
+            .split('; ')
+            .find((row) => row.startsWith(name + '='))
+            ?.split('=')[1] || '';
+    }
+
+    async function issueCsrf() {
+        const data = await request('/api/auth/csrf', {method: 'GET'}, false);
+        state.csrfHeader = data.data?.headerName || 'X-XSRF-TOKEN';
+        state.csrfToken = data.data?.token || decodeURIComponent(readCookie('XSRF-TOKEN'));
+        setStatus('CSRF 토큰 발급 완료', data);
+    }
+
+    async function signup() {
+        await ensureCsrf();
+        const data = await request('/api/auth/signup', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                user_id: el('userId').value.trim(),
+                email: el('email').value.trim(),
+                nickname: el('nickname').value.trim(),
+                password: el('password').value,
+                password_confirm: el('password').value
+            })
+        });
+        setStatus('회원가입 완료', data);
+    }
+
+    async function login() {
+        await ensureCsrf();
+        const data = await request('/api/auth/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                user_id: el('userId').value.trim(),
+                password: el('password').value
+            })
+        });
+        setStatus('로그인 완료', data);
+    }
+
+    async function me() {
+        const data = await request('/api/auth/me', {method: 'GET'});
+        setStatus('현재 사용자 조회 완료', data);
+    }
+
+    async function createPlace() {
+        await ensureCsrf();
+        const data = await request('/api/place', {
+            method: 'POST',
+            body: buildPlaceFormData()
+        });
+        setStatus('장소 등록 완료', data);
+        await searchPlaces();
+    }
+
+    async function updatePlace() {
+        await ensureCsrf();
+        const placeId = requirePlaceId();
+        const data = await request(`/api/place/${placeId}`, {
+            method: 'PATCH',
+            body: buildPlaceFormData()
+        });
+        setStatus('장소 수정 완료', data);
+        await searchPlaces();
+    }
+
+    async function deletePlace() {
+        await ensureCsrf();
+        const placeId = requirePlaceId();
+        const data = await request(`/api/place/${placeId}`, {
+            method: 'DELETE'
+        });
+        setStatus('장소 삭제 완료', data);
+        clearSelectedPlace();
+        await searchPlaces();
+    }
+
+    async function searchPlaces() {
+        await ensureCsrf();
+        const data = await request('/api/place/map', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(readBounds())
+        });
+        renderPlaces(data.data || []);
+        setStatus(`장소 ${data.data?.length || 0}건 조회 완료`, data);
+    }
+
+    async function ensureCsrf() {
+        if (!state.csrfToken) {
+            await issueCsrf();
+        }
+    }
+
+    async function request(url, options = {}, withCsrf = true) {
+        const headers = new Headers(options.headers || {});
+        if (withCsrf && state.csrfToken && !['GET', 'HEAD', 'OPTIONS'].includes(options.method || 'GET')) {
+            headers.set(state.csrfHeader, state.csrfToken);
+        }
+
+        const response = await fetch(url, {
+            credentials: 'same-origin',
+            ...options,
+            headers
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        const body = contentType.includes('application/json') ? await response.json() : await response.text();
+
+        if (!response.ok) {
+            setStatus(`요청 실패 (${response.status})`, body);
+            throw new Error(typeof body === 'string' ? body : body.message);
+        }
+
+        return body;
+    }
+
+    function buildPlaceFormData() {
+        const formData = new FormData();
+        formData.append('request', new Blob([JSON.stringify(readPlaceRequest())], {type: 'application/json'}));
+
+        Array.from(el('files').files).forEach((file) => {
+            formData.append('files', file);
+        });
+
+        return formData;
+    }
+
+    function readPlaceRequest() {
+        return {
+            plNm: el('plNm').value,
+            plDesc: emptyToNull(el('plDesc').value),
+            plAddr1: emptyToNull(el('plAddr1').value),
+            plAddr2: emptyToNull(el('plAddr2').value),
+            plCd: emptyToNull(el('plCd').value),
+            plLat: Number(el('plLat').value),
+            plLng: Number(el('plLng').value)
+        };
+    }
+
+    function readBounds() {
+        return {
+            swLat: Number(el('swLat').value),
+            swLng: Number(el('swLng').value),
+            neLat: Number(el('neLat').value),
+            neLng: Number(el('neLng').value)
+        };
+    }
+
+    function fillBoundsFromMap() {
+        const bounds = map.getBounds();
+        el('swLat').value = bounds.getSouth().toFixed(10);
+        el('swLng').value = bounds.getWest().toFixed(10);
+        el('neLat').value = bounds.getNorth().toFixed(10);
+        el('neLng').value = bounds.getEast().toFixed(10);
+    }
+
+    function setCoordinates(lat, lng) {
+        el('plLat').value = lat.toFixed(10);
+        el('plLng').value = lng.toFixed(10);
+        el('selectedText').textContent = `선택 좌표: ${lat.toFixed(10)}, ${lng.toFixed(10)}`;
+    }
+
+    function renderPlaces(places) {
+        state.markers.forEach((marker) => marker.remove());
+        state.markers.clear();
+        el('placeList').innerHTML = '';
+
+        places.forEach((place) => {
+            const marker = L.marker([place.plLat, place.plLng])
+                .addTo(map)
+                .bindPopup(renderPlacePopup(place));
+            marker.on('click', () => selectPlace(place));
+            state.markers.set(place.plSrl, marker);
+
+            const item = document.createElement('div');
+            item.className = 'place-item';
+            item.dataset.placeId = place.plSrl;
+            item.innerHTML = `
+                <div class="place-title">#${place.plSrl} ${escapeHtml(place.plNm)}</div>
+                <div class="place-meta">${escapeHtml(place.plAddr1 || '')}</div>
+                <div class="place-meta">${place.plLat}, ${place.plLng}</div>
+                <div class="place-meta">${photoCountLabel(place.photos)}</div>
+                ${renderPhotoStrip(place.photos)}
+            `;
+            item.addEventListener('click', (event) => {
+                if (event.target.closest('a')) {
+                    return;
+                }
+                selectPlace(place);
+                map.setView([place.plLat, place.plLng], Math.max(map.getZoom(), 15));
+                state.markers.get(place.plSrl)?.openPopup();
+            });
+            el('placeList').appendChild(item);
+        });
+    }
+
+    function renderPlacePopup(place) {
+        return `
+            <div class="popup">
+                <div class="popup-title">#${place.plSrl} ${escapeHtml(place.plNm)}</div>
+                <div>${escapeHtml(place.plAddr1 || '')}</div>
+                <div class="place-meta">${photoCountLabel(place.photos)}</div>
+                ${renderPopupPhotos(place.photos)}
+            </div>
+        `;
+    }
+
+    function renderPhotoStrip(photos) {
+        if (!photos || photos.length === 0) {
+            return '<div class="photo-empty">등록된 사진 없음</div>';
+        }
+
+        return `
+            <div class="photo-strip">
+                ${photos.slice(0, 6).map(renderPhotoThumb).join('')}
+            </div>
+        `;
+    }
+
+    function renderPopupPhotos(photos) {
+        if (!photos || photos.length === 0) {
+            return '<div class="photo-empty">사진 없음</div>';
+        }
+
+        return `
+            <div class="popup-photo-strip">
+                ${photos.slice(0, 4).map(renderPhotoThumb).join('')}
+            </div>
+        `;
+    }
+
+    function renderPhotoThumb(photo) {
+        const imageUrl = escapeHtml(photo.imageUrl);
+        const fileName = escapeHtml(photo.fileName || '장소 사진');
+
+        return `
+            <a class="photo-thumb" href="${imageUrl}" target="_blank" rel="noopener" title="${fileName}">
+                <img src="${imageUrl}" alt="${fileName}" loading="lazy">
+            </a>
+        `;
+    }
+
+    function photoCountLabel(photos) {
+        const count = photos?.length || 0;
+        return `사진 ${count}장`;
+    }
+
+    function selectPlace(place) {
+        el('placeId').value = place.plSrl;
+        el('plNm').value = place.plNm || '';
+        el('plDesc').value = place.plDesc || '';
+        el('plAddr1').value = place.plAddr1 || '';
+        el('plAddr2').value = place.plAddr2 || '';
+        el('plCd').value = place.plCd || '';
+        setCoordinates(place.plLat, place.plLng);
+
+        document.querySelectorAll('.place-item').forEach((item) => {
+            item.classList.toggle('active', Number(item.dataset.placeId) === Number(place.plSrl));
+        });
+    }
+
+    function clearSelectedPlace() {
+        el('placeId').value = '';
+        document.querySelectorAll('.place-item').forEach((item) => item.classList.remove('active'));
+    }
+
+    function requirePlaceId() {
+        const placeId = el('placeId').value.trim();
+        if (!placeId) {
+            throw new Error('수정/삭제할 장소를 먼저 선택하거나 plSrl을 입력하세요.');
+        }
+        return placeId;
+    }
+
+    function emptyToNull(value) {
+        return value === '' ? null : value;
+    }
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+</script>
+</body>
+</html>

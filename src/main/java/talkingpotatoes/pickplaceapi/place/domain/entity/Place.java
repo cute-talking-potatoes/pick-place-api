@@ -95,4 +95,30 @@ public class Place extends BaseEntity {
             throw new PlaceException(ExceptionCode.ERR_PLACE_INVALID_LONGITUDE);
         }
     }
+
+    public void updatePlace(PlaceRequest request) {
+        if (request.getPlNm() != null && !request.getPlNm().isBlank()) {
+            this.plNm = request.getPlNm();
+        }
+        if (request.getPlDesc() != null && !request.getPlDesc().isBlank()) {
+            this.plDesc = request.getPlDesc();
+        }
+        if (request.getPlAddr1() != null && !request.getPlAddr1().isBlank()) {
+            this.plAddr1 = request.getPlAddr1();
+        }
+        if (request.getPlAddr2() != null && !request.getPlAddr2().isBlank()) {
+            this.plAddr2 = request.getPlAddr2();
+        }
+        if (request.getPlCd() != null && !request.getPlCd().isBlank()) {
+            this.plCd = request.getPlCd();
+        }
+        if (request.getPlLat() != null) {
+            isValidLatitude(request.getPlLat());
+            this.plLat = request.getPlLat();
+        }
+        if (request.getPlLng() != null) {
+            isValidLongitude(request.getPlLng());
+            this.plLng = request.getPlLng();
+        }
+    }
 }

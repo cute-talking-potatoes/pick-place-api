@@ -15,6 +15,10 @@ public enum SuccessCode {
     SUC_AUTH_SIGNUP("회원가입이 완료되었습니다."),
     SUC_AUTH_CURRENT_USER_FOUND("현재 사용자 조회 성공"),
     SUC_AUTH_LOGOUT("로그아웃 성공"),
+    SUC_PLACE_FIND("장소 조회 성공"),
+    SUC_PLACE_CREATE("장소 등록 성공"),
+    SUC_PLACE_UPDATE("장소 수정 성공"),
+    SUC_PLACE_DELETE("장소 삭제 성공"),
     ;
 
     private final String message;

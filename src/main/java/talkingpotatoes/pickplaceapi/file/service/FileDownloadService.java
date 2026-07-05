@@ -20,6 +20,7 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,12 @@ public class FileDownloadService {
         }
 
         return downloadZipFile(uuid, headers, filesToDownload);
+    }
+
+    public Resource displayImage(File file, HttpHeaders headers) {
+        Path path = Path.of(file.getFileSrc());
+        localFileStorageService.validateExists(path);
+        return createInlineResource(headers, path, file.getFileNm(), file.getFileExtension());
     }
 
     private Resource downloadSingleFile(HttpHeaders headers, File file) {
@@ -118,6 +125,46 @@ public class FileDownloadService {
         } catch (IOException e) {
             throw new FileException(ERR_FILE_FAIL_DOWNLOAD, e.getMessage());
         }
+    }
+
+    private Resource createInlineResource(HttpHeaders headers, Path path, String filename, String extension) {
+        try {
+            Resource resource = new UrlResource(path.toUri());
+            String encodedFilename = URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
+            headers.add(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + encodedFilename + "\"");
+            headers.add(HttpHeaders.CONTENT_LENGTH, String.valueOf(Files.size(path)));
+            headers.add(HttpHeaders.CONTENT_TYPE, resolveContentType(path, extension));
+            return resource;
+        } catch (IOException e) {
+            throw new FileException(ERR_FILE_FAIL_DOWNLOAD, e.getMessage());
+        }
+    }
+
+    private String resolveContentType(Path path, String extension) throws IOException {
+        String extensionContentType = resolveContentTypeByExtension(extension);
+        if (extensionContentType != null) {
+            return extensionContentType;
+        }
+
+        String contentType = Files.probeContentType(path);
+        if (contentType == null || !contentType.startsWith("image/")) {
+            return MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        }
+        return contentType;
+    }
+
+    private String resolveContentTypeByExtension(String extension) {
+        if (extension == null) {
+            return null;
+        }
+
+        return switch (extension.toLowerCase()) {
+            case ".jpg", ".jpeg" -> MediaType.IMAGE_JPEG_VALUE;
+            case ".png" -> MediaType.IMAGE_PNG_VALUE;
+            case ".gif" -> MediaType.IMAGE_GIF_VALUE;
+            case ".webp" -> "image/webp";
+            default -> null;
+        };
     }
 
     private void setUpDownloadHeader(String file, HttpHeaders headers, Path path) throws IOException {
