@@ -1,0 +1,21 @@
+{
+  "checks": {
+    "build": {
+      "command": "./gradlew build -x test",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "build.log",
+      "recorded_at": "2026-10-23T14:00:51+00:00",
+      "status": "passed"
+    },
+    "unit-tests": {
+      "command": "./gradlew test",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "unit-tests.log",
+      "recorded_at": "2026-10-23T14:00:40+00:00",
+      "status": "passed"
+    }
+  },
+  "task_id": "devhub-smoke-baseline"
+}

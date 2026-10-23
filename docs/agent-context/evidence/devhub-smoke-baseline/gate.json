@@ -1,0 +1,13 @@
+{
+  "checks": {
+    "build": "passed",
+    "lint": "missing",
+    "unit-tests": "passed"
+  },
+  "evaluated_at": "2026-10-23T14:00:51+00:00",
+  "status": "UNVERIFIED",
+  "task_id": "devhub-smoke-baseline",
+  "tier": "LOW",
+  "waive_reason": null,
+  "waived": []
+}

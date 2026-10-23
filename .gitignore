@@ -202,3 +202,14 @@ gradle-app.setting
 *.hprof
 
 # End of https://www.toptal.com/developers/gitignore/api/macos,java,windows,intellij+all,gradle
+
+# >>> devhub generated (do not edit this block) >>>
+/CLAUDE.md
+/AGENTS.md
+/.mcp.json
+/.claude/
+/.codex/
+/.agents/
+/.devhub/generated.json
+/.devhub/devlog/
+# <<< devhub generated <<<
