@@ -225,7 +225,8 @@ class PlaceServiceTest {
         PhotoFile photoFile1 = createPhotoFile(11L, createFileEntity(101L, "gyeongbokgung-1.jpg", ".jpg"), place1);
         PhotoFile photoFile2 = createPhotoFile(12L, createFileEntity(102L, "gyeongbokgung-2.png", ".png"), place1);
         given(placeRepository.findVisiblePlacesInBounds(bound)).willReturn(List.of(place1, place2));
-        given(photoFileRepository.findByPlaceInWithFile(List.of(place1, place2))).willReturn(List.of(photoFile1, photoFile2));
+        given(photoFileRepository.findByPlaceInWithFile(List.of(place1, place2)))
+            .willReturn(List.of(photoFile1, photoFile2));
 
         // When
         List<PlaceMarkerResponse> result = placeService.findPlacesInMap(bound);
@@ -251,7 +252,8 @@ class PlaceServiceTest {
         // Given
         HttpHeaders headers = new HttpHeaders();
         File file = createFileEntity(101L, "gyeongbokgung.jpg", ".jpg");
-        PhotoFile photoFile = createPhotoFile(11L, file, createPlace(1L, WRITER_ID, createRequest("경복궁", 37.5786111111, 126.9772222222)));
+        PhotoFile photoFile = createPhotoFile(11L, file,
+            createPlace(1L, WRITER_ID, createRequest("경복궁", 37.5786111111, 126.9772222222)));
         Resource resource = mock(Resource.class);
         given(photoFileRepository.findByPhotoFileSrlWithFile(11L)).willReturn(Optional.of(photoFile));
         given(fileDownloadService.displayImage(file, headers)).willReturn(resource);

@@ -2,27 +2,28 @@ package talkingpotatoes.pickplaceapi.user.service;
 
 import static talkingpotatoes.pickplaceapi.global.exception.ExceptionCode.*;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-import lombok.RequiredArgsConstructor;
+import java.time.Clock;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.Locale;
+import java.util.Objects;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
+import lombok.RequiredArgsConstructor;
 import talkingpotatoes.pickplaceapi.global.exception.AuthException;
-import talkingpotatoes.pickplaceapi.user.dto.AuthResponse;
-import talkingpotatoes.pickplaceapi.user.dto.SignUpRequest;
 import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 import talkingpotatoes.pickplaceapi.user.domain.repository.UserRepository;
-
-import java.time.Clock;
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.util.Locale;
-import java.util.Objects;
+import talkingpotatoes.pickplaceapi.user.dto.AuthResponse;
+import talkingpotatoes.pickplaceapi.user.dto.SignUpRequest;
 
 /**
  * Auth 서비스

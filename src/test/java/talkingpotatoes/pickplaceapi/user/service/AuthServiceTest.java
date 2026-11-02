@@ -10,7 +10,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.Optional;
 
-import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +19,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import jakarta.servlet.http.HttpSession;
 import talkingpotatoes.pickplaceapi.global.exception.AuthException;
 import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 import talkingpotatoes.pickplaceapi.user.domain.repository.UserRepository;

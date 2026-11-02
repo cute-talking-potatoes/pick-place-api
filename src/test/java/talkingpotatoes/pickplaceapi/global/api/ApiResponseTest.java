@@ -3,11 +3,11 @@ package talkingpotatoes.pickplaceapi.global.api;
 import static org.junit.jupiter.api.Assertions.*;
 import static talkingpotatoes.pickplaceapi.global.api.SuccessCode.*;
 
-import com.fasterxml.jackson.annotation.JsonInclude;
-
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.ResponseEntity;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 @DisplayName("공통 API 응답 테스트")
 class ApiResponseTest {

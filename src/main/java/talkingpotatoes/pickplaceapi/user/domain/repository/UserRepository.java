@@ -1,9 +1,10 @@
 package talkingpotatoes.pickplaceapi.user.domain.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import talkingpotatoes.pickplaceapi.user.domain.entity.User;
-
 import java.util.Optional;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 
 /**
  * 회원 Repository

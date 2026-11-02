@@ -1,9 +1,10 @@
 package talkingpotatoes.pickplaceapi.global.api;
 
+import org.springframework.http.ResponseEntity;
+
 import com.fasterxml.jackson.annotation.JsonInclude;
 
 import lombok.Getter;
-import org.springframework.http.ResponseEntity;
 
 /**
  * 공통 API 응답

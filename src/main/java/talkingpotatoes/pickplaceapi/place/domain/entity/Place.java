@@ -29,10 +29,10 @@ import talkingpotatoes.pickplaceapi.place.dto.PlaceRequest;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Place extends BaseEntity {
 
-    private final static double MIN_LATITUDE = -90; // 최소 위도
-    private final static double MAX_LATITUDE = 90; // 최대 위도
-    private final static double MIN_LONGITUDE = -180; // 최소 경도
-    private final static double MAX_LONGITUDE = 180; // 최대 경도
+    private static final double MIN_LATITUDE = -90; // 최소 위도
+    private static final double MAX_LATITUDE = 90; // 최대 위도
+    private static final double MIN_LONGITUDE = -180; // 최소 경도
+    private static final double MAX_LONGITUDE = 180; // 최대 경도
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

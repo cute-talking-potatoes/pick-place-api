@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<!DOCTYPE suppressions PUBLIC
+"-//Puppy Crawl//DTD Suppressions 1.1//EN"
+"http://www.puppycrawl.com/dtds/suppressions_1_1.dtd">
+
+<suppressions>
+	<!-- pick-place-api custom: test methods may use Korean scenario names (e.g. 새로운UUID로_사진파일업로드에_성공한다) -->
+	<suppress checks="MethodName|AbbreviationAsWordInName" files="[\\/]src[\\/]test[\\/]"/>
+</suppressions>

@@ -2,10 +2,8 @@ package talkingpotatoes.pickplaceapi.user.controller;
 
 import static talkingpotatoes.pickplaceapi.global.api.SuccessCode.*;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,13 +11,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import talkingpotatoes.pickplaceapi.global.api.ApiResponse;
 import talkingpotatoes.pickplaceapi.user.dto.AuthRequest;
 import talkingpotatoes.pickplaceapi.user.dto.AuthResponse;
 import talkingpotatoes.pickplaceapi.user.dto.SignUpRequest;
 import talkingpotatoes.pickplaceapi.user.service.AuthService;
-
-import java.util.Map;
 
 /**
  * 로그인, 회원가입 컨트롤러

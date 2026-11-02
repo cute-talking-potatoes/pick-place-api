@@ -14,9 +14,9 @@ import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import talkingpotatoes.pickplaceapi.global.domain.UserStatus;
 import talkingpotatoes.pickplaceapi.global.domain.entity.BaseEntity;
 import talkingpotatoes.pickplaceapi.meeting.domain.MeetingRole;
-import talkingpotatoes.pickplaceapi.global.domain.UserStatus;
 import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 
 /**

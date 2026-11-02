@@ -1,22 +1,23 @@
 package talkingpotatoes.pickplaceapi.global.security;
 
+import java.io.IOException;
+import java.util.List;
+
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
 import talkingpotatoes.pickplaceapi.user.domain.entity.User;
 import talkingpotatoes.pickplaceapi.user.domain.repository.UserRepository;
 import talkingpotatoes.pickplaceapi.user.service.AuthService;
-
-import java.io.IOException;
-import java.util.List;
 
 /**
  * HttpSession 기반 인증 복원 필터

@@ -1,6 +1,7 @@
 package talkingpotatoes.pickplaceapi.user.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.Builder;
 import lombok.Getter;
 import talkingpotatoes.pickplaceapi.user.domain.entity.User;

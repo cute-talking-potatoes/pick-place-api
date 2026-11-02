@@ -28,7 +28,7 @@
 
 - 백엔드 단위 테스트: `./gradlew test`
 - 백엔드 통합 테스트: `./gradlew test` (`@SpringBootTest`가 단위 테스트와 같은 태스크에서 실행됨)
-- 백엔드 린트: 없음(린트 플러그인 미설정)
+- 백엔드 린트: `./gradlew checkstyleMain checkstyleTest` (네이버 컨벤션 v1.2 + 프로젝트 커스텀, `config/checkstyle/`. 경고 1건이라도 있으면 실패하며 `./gradlew build`에도 포함됨)
 - 백엔드 빌드: `./gradlew build`
 - API 계약 테스트: 없음
 - 의존성 스캔: 없음
