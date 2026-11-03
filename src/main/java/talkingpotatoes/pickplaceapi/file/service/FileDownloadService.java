@@ -76,8 +76,9 @@ public class FileDownloadService {
             headers.add(HttpHeaders.CONTENT_TYPE, "application/zip");
             return new DeleteOnCloseFileResource(tempZipPath);
         } catch (IOException e) {
+            log.error("ZIP 파일 생성에 실패했습니다. 파일 관리번호: {}", uuid, e);
             deleteTempZipFile(tempZipPath);
-            throw new FileException(ERR_FILE_FAIL_DOWNLOAD, e.getMessage());
+            throw new FileException(ERR_FILE_FAIL_DOWNLOAD);
         } catch (RuntimeException e) {
             deleteTempZipFile(tempZipPath);
             throw e;
@@ -98,7 +99,8 @@ public class FileDownloadService {
             }
             zipOutputStream.finish();
         } catch (IOException e) {
-            throw new FileException(ERR_FILE_FAIL_DOWNLOAD, e.getMessage());
+            log.error("ZIP 파일 작성에 실패했습니다. 임시 파일 경로: {}", tempZipPath, e);
+            throw new FileException(ERR_FILE_FAIL_DOWNLOAD);
         }
     }
 
@@ -123,7 +125,8 @@ public class FileDownloadService {
             headers.add(HttpHeaders.CONTENT_TYPE, contentType);
             return resource;
         } catch (IOException e) {
-            throw new FileException(ERR_FILE_FAIL_DOWNLOAD, e.getMessage());
+            log.error("파일 다운로드 리소스 생성에 실패했습니다. 경로: {}", path, e);
+            throw new FileException(ERR_FILE_FAIL_DOWNLOAD);
         }
     }
 
@@ -136,7 +139,8 @@ public class FileDownloadService {
             headers.add(HttpHeaders.CONTENT_TYPE, resolveContentType(path, extension));
             return resource;
         } catch (IOException e) {
-            throw new FileException(ERR_FILE_FAIL_DOWNLOAD, e.getMessage());
+            log.error("파일 다운로드 리소스 생성에 실패했습니다. 경로: {}", path, e);
+            throw new FileException(ERR_FILE_FAIL_DOWNLOAD);
         }
     }
 

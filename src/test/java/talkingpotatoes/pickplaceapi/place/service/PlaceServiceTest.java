@@ -13,6 +13,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
@@ -107,7 +108,7 @@ class PlaceServiceTest {
         PlaceRequest request = new PlaceRequest(
                 "창덕궁", "수정 설명", "서울 종로구 율곡로 99", "돈화문", "03072", 37.5794444444, 126.9911111111
         );
-        given(placeRepository.findById(1L)).willReturn(Optional.of(place));
+        given(placeRepository.findByIdForUpdate(1L)).willReturn(Optional.of(place));
 
         // When
         placeService.updatePlace(1L, request, List.of());
@@ -133,7 +134,7 @@ class PlaceServiceTest {
         Place place = createPlace(1L, WRITER_ID, createRequest("경복궁", 37.5786111111, 126.9772222222));
         PlaceRequest request = createRequest("창덕궁", 37.5794444444, 126.9911111111);
         List<MultipartFile> files = List.of(createFile("photo.jpg"));
-        given(placeRepository.findById(1L)).willReturn(Optional.of(place));
+        given(placeRepository.findByIdForUpdate(1L)).willReturn(Optional.of(place));
 
         // When
         placeService.updatePlace(1L, request, files);
@@ -141,12 +142,13 @@ class PlaceServiceTest {
         // Then
         then(userInfoProvider).should().checkUserAuthorization(WRITER_ID);
         then(fileService).should().uploadPhoto(same(files), same(place));
+        then(placeRepository).should(never()).findById(any()); // 사진 추가는 장소 행 락을 잡은 상태에서 수행한다
     }
 
     @Test
     void 존재하지않는_장소를_수정하면_예외가발생한다() {
         // Given
-        given(placeRepository.findById(1L)).willReturn(Optional.empty());
+        given(placeRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
         // When & Then
         assertThrows(PlaceException.class, () -> placeService.updatePlace(
@@ -162,7 +164,7 @@ class PlaceServiceTest {
     void 작성자가_아닌_사용자가_장소를_수정하면_예외가발생한다() {
         // Given
         Place place = createPlace(1L, WRITER_ID, createRequest("경복궁", 37.5786111111, 126.9772222222));
-        given(placeRepository.findById(1L)).willReturn(Optional.of(place));
+        given(placeRepository.findByIdForUpdate(1L)).willReturn(Optional.of(place));
         willThrow(new AuthException(ERR_AUTH_ACCESS_DENIED))
                 .given(userInfoProvider)
                 .checkUserAuthorization(WRITER_ID);
@@ -181,24 +183,28 @@ class PlaceServiceTest {
     void 장소를_삭제한다() {
         // Given
         Place place = createPlace(1L, WRITER_ID, createRequest("경복궁", 37.5786111111, 126.9772222222));
-        given(placeRepository.findById(1L)).willReturn(Optional.of(place));
+        given(placeRepository.findByIdForUpdate(1L)).willReturn(Optional.of(place));
 
         // When
         placeService.deletePlace(1L);
 
-        // Then
-        then(userInfoProvider).should().checkUserAuthorization(WRITER_ID);
-        then(placeRepository).should().delete(place);
+        // Then - 권한 확인 → 사진·파일 정리 → 장소 삭제 순서로 수행된다
+        InOrder inOrder = inOrder(userInfoProvider, fileService, placeRepository);
+        inOrder.verify(userInfoProvider).checkUserAuthorization(WRITER_ID);
+        inOrder.verify(fileService).deletePlacePhotos(place);
+        inOrder.verify(placeRepository).delete(place);
+        then(placeRepository).should(never()).findById(any()); // 락 없는 조회를 쓰지 않는다
     }
 
     @Test
     void 존재하지않는_장소를_삭제하면_예외가발생한다() {
         // Given
-        given(placeRepository.findById(1L)).willReturn(Optional.empty());
+        given(placeRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
 
         // When & Then
         assertThrows(PlaceException.class, () -> placeService.deletePlace(1L));
         then(userInfoProvider).should(never()).checkUserAuthorization(any());
+        then(fileService).should(never()).deletePlacePhotos(any());
         then(placeRepository).should(never()).delete(any(Place.class));
     }
 
@@ -206,13 +212,14 @@ class PlaceServiceTest {
     void 작성자가_아닌_사용자가_장소를_삭제하면_예외가발생한다() {
         // Given
         Place place = createPlace(1L, WRITER_ID, createRequest("경복궁", 37.5786111111, 126.9772222222));
-        given(placeRepository.findById(1L)).willReturn(Optional.of(place));
+        given(placeRepository.findByIdForUpdate(1L)).willReturn(Optional.of(place));
         willThrow(new AuthException(ERR_AUTH_ACCESS_DENIED))
                 .given(userInfoProvider)
                 .checkUserAuthorization(WRITER_ID);
 
         // When & Then
         assertThrows(AuthException.class, () -> placeService.deletePlace(1L));
+        then(fileService).should(never()).deletePlacePhotos(any());
         then(placeRepository).should(never()).delete(any(Place.class));
     }
 

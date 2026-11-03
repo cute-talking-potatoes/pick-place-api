@@ -1,0 +1,59 @@
+{
+  "checks": {
+    "build": {
+      "command": "./gradlew --no-daemon clean build",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "build.log",
+      "recorded_at": "2026-11-03T12:42:55+00:00",
+      "status": "passed"
+    },
+    "concurrency-review": {
+      "exit_code": 0,
+      "kind": "manual",
+      "log": "concurrency-review.log",
+      "recorded_at": "2026-11-03T12:43:38+00:00",
+      "status": "passed"
+    },
+    "injection-review": {
+      "exit_code": 0,
+      "kind": "manual",
+      "log": "injection-review.log",
+      "recorded_at": "2026-11-03T12:43:15+00:00",
+      "status": "passed"
+    },
+    "integration-tests": {
+      "command": "./gradlew --no-daemon test --rerun --tests *IntegrationTest --tests *PickPlaceApiApplicationTests --tests *SessionCookiePropertiesTest",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "integration-tests.log",
+      "recorded_at": "2026-11-03T12:42:37+00:00",
+      "status": "passed"
+    },
+    "lint": {
+      "command": "./gradlew --no-daemon checkstyleMain checkstyleTest --rerun-tasks",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "lint.log",
+      "recorded_at": "2026-11-03T12:42:43+00:00",
+      "status": "passed"
+    },
+    "secrets-scan": {
+      "command": "bash -o pipefail -c echo \"scope: git diff HEAD -- src build.gradle + untracked files under src/\"; { git diff HEAD -- src build.gradle; git ls-files --others --exclude-standard -z -- src | while IFS= read -r -d \"\" f; do echo \"+++ untracked $f\"; cat \"$f\"; done; } > \"$TMPDIR/ss_in.txt\" || exit 3; echo \"input lines: $(wc -l < \"$TMPDIR/ss_in.txt\")\"; grep \"^+++ untracked\" \"$TMPDIR/ss_in.txt\"; python3 .claude/skills/quality-gate/scripts/scrub_secrets.py --check < \"$TMPDIR/ss_in.txt\"; rc=$?; rm -f \"$TMPDIR/ss_in.txt\"; [ $rc -eq 0 ] && echo \"no secret patterns found\"; exit $rc",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "secrets-scan.log",
+      "recorded_at": "2026-11-03T12:42:44+00:00",
+      "status": "passed"
+    },
+    "unit-tests": {
+      "command": "./gradlew --no-daemon clean test --rerun",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "unit-tests.log",
+      "recorded_at": "2026-11-03T12:42:25+00:00",
+      "status": "passed"
+    }
+  },
+  "task_id": "place-file-hardening"
+}

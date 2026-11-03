@@ -1,6 +1,7 @@
 package talkingpotatoes.pickplaceapi.file.service;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 
@@ -58,6 +59,21 @@ public class FileMetadataService {
         userFileRepository.deleteByFileSrl(file.getFileSrl());
         photoFileRepository.deleteByFileSrl(file.getFileSrl());
         fileRepository.delete(file);
+    }
+
+    /**
+     * 여러 파일의 메타데이터를 일괄 삭제한다. (FK 참조 행 → 파일 행 순서, 테이블당 쿼리 1회)
+     * <pre>
+     *  - 벌크 삭제 후 영속성 컨텍스트가 비워지므로 호출자가 들고 있던 엔티티는 준영속 상태가 된다.
+     * </pre>
+     */
+    public void deleteAll(List<Long> fileSrls) {
+        if (fileSrls.isEmpty()) {
+            return;
+        }
+        userFileRepository.deleteAllByFileSrlIn(fileSrls);
+        photoFileRepository.deleteAllByFileSrlIn(fileSrls);
+        fileRepository.deleteAllByFileSrlIn(fileSrls);
     }
 
     private File saveFileEntity(FileMetadata fileMetadata, User user) {

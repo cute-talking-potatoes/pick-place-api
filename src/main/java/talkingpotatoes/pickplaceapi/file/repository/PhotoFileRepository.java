@@ -25,6 +25,10 @@ public interface PhotoFileRepository extends JpaRepository<PhotoFile, Long> {
     @Query("DELETE FROM PhotoFile f WHERE f.file.fileSrl = :fileSrl")
     void deleteByFileSrl(Long fileSrl);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM PhotoFile f WHERE f.file.fileSrl IN :fileSrls")
+    int deleteAllByFileSrlIn(@Param("fileSrls") List<Long> fileSrls);
+
     @Query("""
                 SELECT pf
                 FROM PhotoFile pf
@@ -34,6 +38,15 @@ public interface PhotoFileRepository extends JpaRepository<PhotoFile, Long> {
                 ORDER BY pf.photoFileSrl ASC
             """)
     List<PhotoFile> findByPlaceInWithFile(@Param("places") List<Place> places);
+
+    @Query("""
+                SELECT pf
+                FROM PhotoFile pf
+                JOIN FETCH pf.file
+                WHERE pf.place = :place
+                ORDER BY pf.photoFileSrl ASC
+            """)
+    List<PhotoFile> findByPlaceWithFile(@Param("place") Place place);
 
     @Query("""
                 SELECT pf

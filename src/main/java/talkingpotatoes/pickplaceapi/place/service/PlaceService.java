@@ -53,7 +53,7 @@ public class PlaceService {
 
     @Transactional
     public void updatePlace(Long plSrl, PlaceRequest request, List<MultipartFile> files) {
-        Place place = getPlace(plSrl);
+        Place place = getPlaceForUpdate(plSrl); // 삭제와 동시에 사진이 추가되지 않도록 장소 행 락
         userInfoProvider.checkUserAuthorization(place.getCreatedBy()); // 작성자와 수정자가 동일한지 확인
         place.updatePlace(request); // TODO: 2026/07/2 더티체킹이 정상적으로 발생하여 업데이트가 되는지 확인하기
         if (hasFiles(files)) {
@@ -61,10 +61,20 @@ public class PlaceService {
         }
     }
 
+    /**
+     * 장소 삭제
+     * <pre>
+     *  - 작성자 권한을 먼저 확인한다.
+     *  - 장소 사진(tb_photo_file)과 파일(tb_file) 행을 삭제한 뒤 장소를 삭제한다.
+     *  - 디스크 파일은 트랜잭션 커밋 이후에만 삭제된다. (롤백 시 유지)
+     *  - 장소 행을 쓰기 락으로 조회해 동시에 실행되는 사진 추가(updatePlace)와 직렬화한다.
+     * </pre>
+     */
     @Transactional
     public void deletePlace(Long plSrl) {
-        Place place = getPlace(plSrl);
+        Place place = getPlaceForUpdate(plSrl);
         userInfoProvider.checkUserAuthorization(place.getCreatedBy()); // 작성자와 수정자가 동일한지 확인
+        fileService.deletePlacePhotos(place); // 장소 사진·파일 정리 (FK 참조 행을 먼저 삭제)
         placeRepository.delete(place);
     }
 
@@ -88,6 +98,11 @@ public class PlaceService {
 
     private Place getPlace(Long placeId) {
         return placeRepository.findById(placeId).orElseThrow(() -> new PlaceException(ERR_PLACE_NOT_FOUND));
+    }
+
+    private Place getPlaceForUpdate(Long placeId) {
+        return placeRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new PlaceException(ERR_PLACE_NOT_FOUND));
     }
 
     private boolean hasFiles(List<MultipartFile> files) {

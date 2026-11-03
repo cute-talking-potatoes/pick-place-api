@@ -2,6 +2,7 @@ package talkingpotatoes.pickplaceapi.file.service;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
+import static talkingpotatoes.pickplaceapi.global.exception.ExceptionCode.*;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -20,6 +22,9 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.io.Resource;
@@ -35,6 +40,7 @@ import talkingpotatoes.pickplaceapi.file.domain.prop.FileProp;
 import talkingpotatoes.pickplaceapi.file.repository.FileRepository;
 import talkingpotatoes.pickplaceapi.file.repository.PhotoFileRepository;
 import talkingpotatoes.pickplaceapi.file.repository.UserFileRepository;
+import talkingpotatoes.pickplaceapi.global.exception.ExceptionCode;
 import talkingpotatoes.pickplaceapi.global.exception.FileException;
 import talkingpotatoes.pickplaceapi.global.security.UserInfoProvider;
 import talkingpotatoes.pickplaceapi.place.domain.entity.Place;
@@ -51,6 +57,18 @@ class FileServiceTest {
 
     private static final String CURRENT_USER_ID = "CURRENT_USER";
     private static final String OTHER_USER_ID = "OTHER_USER";
+
+    private static final byte[] PNG_BYTES = {
+        (byte)0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52
+    };
+    private static final byte[] JPEG_BYTES = {
+        (byte)0xFF, (byte)0xD8, (byte)0xFF, (byte)0xE0, 0x00, 0x10, 0x4A, 0x46, 0x49, 0x46, 0x00, 0x01
+    };
+    private static final byte[] GIF_BYTES = {'G', 'I', 'F', '8', '9', 'a', 0x01, 0x00, 0x01, 0x00, 0x00, 0x00};
+    private static final byte[] WEBP_BYTES = {
+        'R', 'I', 'F', 'F', 0x24, 0x00, 0x00, 0x00, 'W', 'E', 'B', 'P', 'V', 'P', '8', ' '
+    };
+    private static final byte[] TEXT_BYTES = "this is not an image".getBytes(StandardCharsets.UTF_8);
 
     private FileService fileService;
 
@@ -87,7 +105,8 @@ class FileServiceTest {
                 fileRepository,
                 localFileStorageService,
                 fileMetadataService,
-                fileDownloadService
+                fileDownloadService,
+                photoFileRepository
         );
     }
 
@@ -131,6 +150,11 @@ class FileServiceTest {
         given(fileProp.getFileTypes()).willReturn(List.of(".jpg", ".png"));
     }
 
+    void setupPhoto() {
+        given(fileProp.getFilePath()).willReturn(tempDir.toString());
+        given(fileProp.getImageTypes()).willReturn(List.of(".jpg", ".jpeg", ".png", ".gif", ".webp"));
+    }
+
     void setupCurrentUser() {
         given(userInfoProvider.getUser()).willReturn(user);
     }
@@ -156,14 +180,14 @@ class FileServiceTest {
     @Test
     void 새로운UUID로_사진파일업로드에_성공한다() {
         // Given
-        setup();
+        setupPhoto();
         setupCurrentUser();
 
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "test.jpg",
                 "image/jpeg",
-                "data".getBytes(StandardCharsets.UTF_8)
+                JPEG_BYTES
         );
 
         // When
@@ -210,7 +234,7 @@ class FileServiceTest {
     }
 
     @Test
-    void 유효하지않은확장자로_파일업로드요청시_파일업로드에_실패한다() {
+    void 유효하지않은확장자로_파일업로드요청시_파일업로드에_실패한다() throws IOException {
         // Given
         setup();
 
@@ -224,6 +248,7 @@ class FileServiceTest {
         // When & Then
         assertThrows(FileException.class, () -> executeInTransaction(() -> fileService.upload(List.of(file))));
 
+        assertEquals(0, countEntries(tempDir)); // 검증 실패 시 UUID 디렉토리도 만들지 않는다
         verify(fileRepository, never()).save(any(File.class));
         verify(photoFileRepository, never()).save(any(PhotoFile.class));
         verify(userFileRepository, never()).save(any(UserFile.class));
@@ -232,8 +257,7 @@ class FileServiceTest {
     @Test
     void 여러파일업로드중_유효하지않은확장자가있으면_이미저장된_물리파일을_삭제한다() throws IOException {
         // Given
-        setup();
-        setupCurrentUser();
+        setup(); // 모든 파일 검증이 디스크 쓰기 전에 끝나므로 첫 파일도 저장되지 않는다
 
         MockMultipartFile successFile = new MockMultipartFile(
                 "file",
@@ -255,7 +279,8 @@ class FileServiceTest {
                 () -> executeInTransaction(() -> fileService.upload(List.of(successFile, failFile)))
         );
 
-        assertEquals(0, countRegularFiles(tempDir));
+        assertEquals(0, countEntries(tempDir));
+        verify(fileRepository, never()).save(any(File.class));
     }
 
     @Test
@@ -277,6 +302,7 @@ class FileServiceTest {
         assertThrows(RuntimeException.class, () -> executeInTransaction(() -> fileService.upload(List.of(file))));
 
         assertEquals(0, countRegularFiles(tempDir));
+        assertEquals(0, countEntries(tempDir)); // 롤백 시 빈 UUID 디렉토리도 정리된다
         verify(userFileRepository, never()).save(any(UserFile.class));
         verify(photoFileRepository, never()).save(any(PhotoFile.class));
     }
@@ -662,6 +688,324 @@ class FileServiceTest {
         assertThrows(FileException.class, () -> fileService.download(uuid, List.of(1L), headers));
     }
 
+    /**
+     * =========================
+     * uploadPhoto() / updatePhoto() - 장소 사진 이미지 검증 테스트
+     * =========================
+     */
+
+    static Stream<Arguments> invalidPhotoFiles() {
+        return Stream.of(
+                Arguments.of("텍스트 확장자", "memo.txt", TEXT_BYTES, ERR_FILE_EXTENSION_NOT_MATCH),
+                Arguments.of("PDF 확장자", "doc.pdf", "%PDF-1.7".getBytes(StandardCharsets.US_ASCII),
+                        ERR_FILE_EXTENSION_NOT_MATCH),
+                Arguments.of("확장자 없음", "noextension", PNG_BYTES, ERR_FILE_EXTENSION_NOT_MATCH),
+                Arguments.of("png 확장자에 텍스트 내용", "fake.png", TEXT_BYTES, ERR_FILE_INVALID_IMAGE),
+                Arguments.of("빈 png 파일", "empty.png", new byte[0], ERR_FILE_INVALID_IMAGE),
+                Arguments.of("시그니처보다 짧은 파일", "short.png", new byte[] {(byte)0x89, 0x50}, ERR_FILE_INVALID_IMAGE),
+                Arguments.of("png 확장자에 jpeg 내용", "mismatch.png", JPEG_BYTES, ERR_FILE_INVALID_IMAGE),
+                Arguments.of("jpg 확장자에 png 내용", "mismatch.jpg", PNG_BYTES, ERR_FILE_INVALID_IMAGE)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("invalidPhotoFiles")
+    void 이미지가아닌파일로_장소사진업로드시_거부된다(String caseName, String filename, byte[] content,
+            ExceptionCode expectedCode) throws IOException {
+        // Given
+        setupPhoto();
+        MockMultipartFile file = new MockMultipartFile("file", filename, "image/png", content);
+
+        // When
+        FileException exception = assertThrows(FileException.class,
+                () -> executeInTransaction(() -> fileService.uploadPhoto(List.of(file), createPlaceEntity())));
+
+        // Then
+        assertEquals(expectedCode.name(), exception.getCode());
+        assertEquals(0, countEntries(tempDir)); // 파일도, UUID 디렉토리도 남지 않는다
+        verify(fileRepository, never()).save(any(File.class));
+        verify(photoFileRepository, never()).save(any(PhotoFile.class));
+    }
+
+    static Stream<Arguments> validPhotoFiles() {
+        return Stream.of(
+                Arguments.of("photo.png", PNG_BYTES),
+                Arguments.of("photo.jpg", JPEG_BYTES),
+                Arguments.of("photo.jpeg", JPEG_BYTES),
+                Arguments.of("PHOTO.PNG", PNG_BYTES),
+                Arguments.of("Photo.JpG", JPEG_BYTES),
+                Arguments.of("photo.gif", GIF_BYTES),
+                Arguments.of("photo.webp", WEBP_BYTES)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("validPhotoFiles")
+    void 정상이미지파일은_장소사진업로드에_성공한다(String filename, byte[] content) {
+        // Given
+        setupPhoto();
+        setupCurrentUser();
+        MockMultipartFile file = new MockMultipartFile("file", filename, "image/png", content);
+
+        // When
+        executeInTransaction(() -> fileService.uploadPhoto(List.of(file), createPlaceEntity()));
+
+        // Then
+        verify(fileRepository).save(argThat(f ->
+                f.getFileNm().equals(filename) && Files.exists(Path.of(f.getFileSrc()))
+        ));
+        verify(photoFileRepository).save(any(PhotoFile.class));
+    }
+
+    @Test
+    void 이미지화이트리스트가_설정되지않으면_장소사진업로드를_거부한다() {
+        // Given
+        given(fileProp.getFilePath()).willReturn(tempDir.toString());
+        given(fileProp.getImageTypes()).willReturn(null);
+        MockMultipartFile file = new MockMultipartFile("file", "photo.png", "image/png", PNG_BYTES);
+
+        // When & Then
+        FileException exception = assertThrows(FileException.class,
+                () -> executeInTransaction(() -> fileService.uploadPhoto(List.of(file), createPlaceEntity())));
+        assertEquals(ERR_FILE_EXTENSION_NOT_MATCH.name(), exception.getCode());
+    }
+
+    @Test
+    void 장소사진추가업로드도_이미지가아니면_거부된다() throws IOException {
+        // Given
+        setupPhoto();
+        setupCurrentUserId();
+        String uuid = UUID.randomUUID().toString();
+        File existing = createFileEntity("dummy", "old.jpg", uuid, 1, CURRENT_USER_ID);
+        given(fileRepository.findByUUID(uuid)).willReturn(List.of(existing));
+        MockMultipartFile file = new MockMultipartFile("file", "memo.txt", "text/plain", TEXT_BYTES);
+
+        // When & Then
+        assertThrows(FileException.class,
+                () -> executeInTransaction(() -> fileService.updatePhoto(List.of(file), uuid, createPlaceEntity())));
+        assertEquals(0, countRegularFiles(tempDir));
+        verify(fileRepository, never()).save(any(File.class));
+    }
+
+    @Test
+    void 일반파일업로드는_이미지검증없이_기존화이트리스트를_따른다() {
+        // Given - 일반 업로드는 file.fileTypes만 확인하고 내용은 검사하지 않는다
+        given(fileProp.getFilePath()).willReturn(tempDir.toString());
+        given(fileProp.getFileTypes()).willReturn(List.of(".txt"));
+        setupCurrentUser();
+        MockMultipartFile file = new MockMultipartFile("file", "memo.txt", "text/plain", TEXT_BYTES);
+
+        // When
+        executeInTransaction(() -> fileService.upload(List.of(file)));
+
+        // Then
+        verify(fileRepository).save(argThat(f -> f.getFileNm().equals("memo.txt")));
+        verify(userFileRepository).save(any(UserFile.class));
+        verify(fileProp, never()).getImageTypes();
+    }
+
+    @Test
+    void 여러사진업로드중_두번째가이미지가아니면_첫번째파일도_디렉토리도_남지않는다() throws IOException {
+        // Given
+        setupPhoto();
+        MockMultipartFile valid = new MockMultipartFile("file", "ok.png", "image/png", PNG_BYTES);
+        MockMultipartFile invalid = new MockMultipartFile("file", "fake.png", "image/png", TEXT_BYTES);
+
+        // When & Then
+        assertThrows(FileException.class, () -> executeInTransaction(
+                () -> fileService.uploadPhoto(List.of(valid, invalid), createPlaceEntity())));
+        assertEquals(0, countEntries(tempDir));
+        verify(fileRepository, never()).save(any(File.class));
+        verify(photoFileRepository, never()).save(any(PhotoFile.class));
+    }
+
+    @Test
+    void 여러사진업로드중_두번째메타데이터저장에_실패하면_첫번째물리파일과_디렉토리가_정리된다() throws IOException {
+        // Given
+        setupPhoto();
+        setupCurrentUser();
+        MockMultipartFile first = new MockMultipartFile("file", "first.png", "image/png", PNG_BYTES);
+        MockMultipartFile second = new MockMultipartFile("file", "second.jpg", "image/jpeg", JPEG_BYTES);
+        given(fileRepository.save(any(File.class)))
+                .willAnswer(invocation -> invocation.getArgument(0))
+                .willThrow(new RuntimeException("DB 저장 실패"));
+
+        // When & Then
+        assertThrows(RuntimeException.class, () -> executeInTransaction(
+                () -> fileService.uploadPhoto(List.of(first, second), createPlaceEntity())));
+        verify(fileRepository, times(2)).save(any(File.class)); // 첫 파일은 실제로 저장된 뒤 롤백됐다
+        assertEquals(0, countEntries(tempDir));
+    }
+
+    @Test
+    void 기존디렉토리에_추가업로드가_롤백되면_기존파일과_디렉토리는_유지된다() throws IOException {
+        // Given
+        setupPhoto();
+        setupCurrentUserId();
+        setupCurrentUser();
+        String uuid = UUID.randomUUID().toString();
+        Path existingDir = Files.createDirectories(tempDir.resolve(uuid));
+        Path existingFile = Files.write(existingDir.resolve(uuid + "_1"), PNG_BYTES);
+        File existing = createFileEntity(existingFile.toString(), "old.png", uuid, 1, CURRENT_USER_ID);
+        given(fileRepository.findByUUID(uuid)).willReturn(List.of(existing));
+        given(fileRepository.save(any(File.class))).willThrow(new RuntimeException("DB 저장 실패"));
+        MockMultipartFile file = new MockMultipartFile("file", "new.png", "image/png", PNG_BYTES);
+
+        // When & Then
+        assertThrows(RuntimeException.class, () -> executeInTransaction(
+                () -> fileService.updatePhoto(List.of(file), uuid, createPlaceEntity())));
+        assertTrue(Files.exists(existingFile));
+        assertFalse(Files.exists(existingDir.resolve(uuid + "_2")));
+    }
+
+    @Test
+    void 트랜잭션밖에서_업로드하면_검증전에_실패하고_디렉토리를_만들지않는다() throws IOException {
+        // Given
+        MockMultipartFile file = new MockMultipartFile("file", "ok.png", "image/png", PNG_BYTES);
+
+        // When & Then
+        FileException exception = assertThrows(FileException.class,
+                () -> fileService.uploadPhoto(List.of(file), createPlaceEntity()));
+        assertEquals(ERR_FILE_SAVE_INCORRECT_TRANSACTION.name(), exception.getCode());
+        assertEquals(0, countEntries(tempDir));
+    }
+
+    /**
+     * =========================
+     * deletePlacePhotos() - 장소 사진 정리 테스트
+     * =========================
+     */
+
+    @Test
+    void 장소사진삭제시_DB행은_즉시삭제되고_물리파일은_커밋후에_삭제된다() throws IOException {
+        // Given
+        Place place = createPlaceEntity();
+        Path photo1 = writeFile("photo1");
+        Path photo2 = writeFile("photo2");
+        File file1 = createPhotoFileEntity(1L, photo1, "photo1.jpg");
+        File file2 = createPhotoFileEntity(2L, photo2, "photo2.jpg");
+        given(photoFileRepository.findByPlaceWithFile(place))
+                .willReturn(List.of(createPhotoFile(file1, place), createPhotoFile(file2, place)));
+
+        // When
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            fileService.deletePlacePhotos(place);
+
+            // Then - 커밋 전에는 물리 파일이 남아있다
+            assertTrue(Files.exists(photo1));
+            assertTrue(Files.exists(photo2));
+            verify(userFileRepository).deleteAllByFileSrlIn(List.of(1L, 2L));
+            verify(photoFileRepository).deleteAllByFileSrlIn(List.of(1L, 2L));
+            verify(fileRepository).deleteAllByFileSrlIn(List.of(1L, 2L)); // 파일당 개별 삭제가 아닌 일괄 삭제
+            verify(fileRepository, never()).delete(any(File.class));
+        } finally {
+            completeTransaction(TransactionSynchronization.STATUS_COMMITTED);
+        }
+
+        // Then - 커밋 후에는 물리 파일이 삭제된다
+        assertFalse(Files.exists(photo1));
+        assertFalse(Files.exists(photo2));
+    }
+
+    @Test
+    void 장소사진삭제후_롤백되면_물리파일은_남아있다() throws IOException {
+        // Given
+        Place place = createPlaceEntity();
+        Path photo = writeFile("photo");
+        File file = createPhotoFileEntity(1L, photo, "photo.jpg");
+        given(photoFileRepository.findByPlaceWithFile(place)).willReturn(List.of(createPhotoFile(file, place)));
+
+        // When
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            fileService.deletePlacePhotos(place);
+        } finally {
+            completeTransaction(TransactionSynchronization.STATUS_ROLLED_BACK);
+        }
+
+        // Then
+        assertTrue(Files.exists(photo));
+    }
+
+    @Test
+    void 커밋후_물리파일삭제에_실패해도_예외없이_나머지파일은_삭제된다() throws IOException {
+        // Given - 비어있지 않은 디렉토리는 삭제에 실패한다
+        Place place = createPlaceEntity();
+        Path undeletable = tempDir.resolve("undeletable");
+        Files.createDirectories(undeletable);
+        Files.write(undeletable.resolve("child"), "x".getBytes(StandardCharsets.UTF_8));
+        Path photo = writeFile("photo");
+        File file1 = createPhotoFileEntity(1L, undeletable, "broken.jpg");
+        File file2 = createPhotoFileEntity(2L, photo, "photo.jpg");
+        given(photoFileRepository.findByPlaceWithFile(place))
+                .willReturn(List.of(createPhotoFile(file1, place), createPhotoFile(file2, place)));
+
+        // When & Then
+        assertDoesNotThrow(() -> executeInTransaction(() -> fileService.deletePlacePhotos(place)));
+        assertTrue(Files.exists(undeletable));
+        assertFalse(Files.exists(photo));
+    }
+
+    @Test
+    void 사진이없는장소는_아무것도삭제하지않는다() {
+        // Given
+        Place place = createPlaceEntity();
+        given(photoFileRepository.findByPlaceWithFile(place)).willReturn(List.of());
+
+        // When
+        executeInTransaction(() -> fileService.deletePlacePhotos(place));
+
+        // Then
+        verify(photoFileRepository, never()).deleteAllByFileSrlIn(any());
+        verify(fileRepository, never()).deleteAllByFileSrlIn(any());
+    }
+
+    @Test
+    void 트랜잭션밖에서_장소사진삭제를_호출하면_아무것도삭제하지않고_실패한다() throws IOException {
+        // Given
+        Place place = createPlaceEntity();
+        Path photo = writeFile("photo");
+
+        // When & Then
+        FileException exception = assertThrows(FileException.class, () -> fileService.deletePlacePhotos(place));
+        assertEquals(ERR_FILE_DELETE_INCORRECT_TRANSACTION.name(), exception.getCode());
+        verify(photoFileRepository, never()).findByPlaceWithFile(any());
+        assertTrue(Files.exists(photo));
+        verify(photoFileRepository, never()).deleteAllByFileSrlIn(any());
+        verify(fileRepository, never()).deleteAllByFileSrlIn(any());
+    }
+
+    private Path writeFile(String name) throws IOException {
+        Path path = tempDir.resolve(name);
+        Files.write(path, name.getBytes(StandardCharsets.UTF_8));
+        return path;
+    }
+
+    private File createPhotoFileEntity(Long fileSrl, Path path, String name) {
+        return File.builder()
+                .fileSrl(fileSrl)
+                .fileNm(name)
+                .fileSrc(path.toString())
+                .fileExtension(".jpg")
+                .fileManageSrl("uuid")
+                .fileSeq(fileSrl)
+                .build();
+    }
+
+    private PhotoFile createPhotoFile(File file, Place place) {
+        return PhotoFile.builder()
+                .file(file)
+                .place(place)
+                .build();
+    }
+
+    private long countEntries(Path rootPath) throws IOException {
+        try (var paths = Files.list(rootPath)) {
+            return paths.count();
+        }
+    }
+
     private long countRegularFiles(Path rootPath) throws IOException {
         try (var paths = Files.walk(rootPath)) {
             return paths.filter(Files::isRegularFile)
@@ -687,6 +1031,9 @@ class FileServiceTest {
         List<TransactionSynchronization> synchronizations = TransactionSynchronizationManager.getSynchronizations();
 
         try {
+            if (completionStatus == TransactionSynchronization.STATUS_COMMITTED) { // 실제 트랜잭션처럼 afterCommit 먼저 호출
+                synchronizations.forEach(TransactionSynchronization::afterCommit);
+            }
             synchronizations.forEach(synchronization -> synchronization.afterCompletion(completionStatus));
         } finally {
             TransactionSynchronizationManager.clearSynchronization();

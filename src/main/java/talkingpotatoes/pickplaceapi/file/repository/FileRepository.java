@@ -3,7 +3,9 @@ package talkingpotatoes.pickplaceapi.file.repository;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import talkingpotatoes.pickplaceapi.file.domain.entity.File;
 
@@ -20,4 +22,8 @@ public interface FileRepository extends JpaRepository<File, Long> {
 
     @Query("SELECT f FROM File f WHERE f.fileManageSrl = :uuid AND f.fileSeq IN :fileSeqList")
     List<File> findByUUIDAndFileSeq(String uuid, List<Long> fileSeqList);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM File f WHERE f.fileSrl IN :fileSrls")
+    int deleteAllByFileSrlIn(@Param("fileSrls") List<Long> fileSrls);
 }

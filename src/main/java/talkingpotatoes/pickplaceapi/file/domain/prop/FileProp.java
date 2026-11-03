@@ -18,5 +18,6 @@ import lombok.Data;
 @ConfigurationProperties(prefix = "file")
 public class FileProp {
     private String filePath;
-    private List<String> fileTypes;
+    private List<String> fileTypes; // 일반 파일 업로드 허용 확장자
+    private List<String> imageTypes; // 장소 사진 업로드 허용 이미지 확장자
 }

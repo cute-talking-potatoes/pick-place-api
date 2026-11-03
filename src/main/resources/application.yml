@@ -19,11 +19,12 @@ spring:
     multipart:
       max-file-size: 50MB
       max-request-size: 300MB
-  server:
-    servlet:
-      session:
-        timeout: 7d
-        cookie:
-          http-only: true
-          same-site: lax
-          secure: ${SESSION_COOKIE_SECURE:false}
+
+server:
+  servlet:
+    session:
+      timeout: 7d
+      cookie:
+        http-only: true
+        same-site: lax
+        secure: ${SESSION_COOKIE_SECURE:false}

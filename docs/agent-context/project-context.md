@@ -26,10 +26,12 @@
 
 에이전트는 아래 명령을 그대로 실행한다.
 
-- 백엔드 단위 테스트: `./gradlew test`
-- 백엔드 통합 테스트: `./gradlew test` (`@SpringBootTest`가 단위 테스트와 같은 태스크에서 실행됨)
-- 백엔드 린트: `./gradlew checkstyleMain checkstyleTest` (네이버 컨벤션 v1.2 + 프로젝트 커스텀, `config/checkstyle/`. 경고 1건이라도 있으면 실패하며 `./gradlew build`에도 포함됨)
-- 백엔드 빌드: `./gradlew build`
+- Gradle은 항상 `--no-daemon`으로 실행한다. 샌드박스 안에서 시작된 Gradle 데몬이 샌드박스 제약을 유지한 채 재사용되어 `.gradle/.../fileHashes.lock (Operation not permitted)`로 빌드가 시작되지 않는 문제가 있었다(2026-11-03).
+
+- 백엔드 단위 테스트: `./gradlew --no-daemon test`
+- 백엔드 통합 테스트: `./gradlew --no-daemon test` (`@SpringBootTest`, 그리고 H2(MySQL 호환 모드, `src/test/resources/place-delete-h2.properties`)를 쓰는 `*IntegrationTest`가 단위 테스트와 같은 태스크에서 실행됨. MySQL Testcontainers는 없음)
+- 백엔드 린트: `./gradlew --no-daemon checkstyleMain checkstyleTest` (네이버 컨벤션 v1.2 + 프로젝트 커스텀, `config/checkstyle/`. 경고 1건이라도 있으면 실패하며 `./gradlew --no-daemon build`에도 포함됨)
+- 백엔드 빌드: `./gradlew --no-daemon build`
 - API 계약 테스트: 없음
 - 의존성 스캔: 없음
 - SAST: 없음

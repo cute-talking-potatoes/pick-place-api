@@ -1,8 +1,11 @@
 package talkingpotatoes.pickplaceapi.file.repository;
 
+import java.util.List;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import talkingpotatoes.pickplaceapi.file.domain.entity.UserFile;
@@ -19,4 +22,8 @@ public interface UserFileRepository extends JpaRepository<UserFile, Long> {
     @Transactional
     @Query("DELETE FROM UserFile f WHERE f.file.fileSrl = :fileSrl")
     void deleteByFileSrl(Long fileSrl);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM UserFile f WHERE f.file.fileSrl IN :fileSrls")
+    int deleteAllByFileSrlIn(@Param("fileSrls") List<Long> fileSrls);
 }

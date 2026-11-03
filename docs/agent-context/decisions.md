@@ -2,6 +2,32 @@
 
 새 결정은 맨 위에 추가한다. 오케스트레이터는 작업을 마칠 때 주요 결정을 이 형식으로 기록한다.
 
+## 2026-11-03 — 장소·파일 보안·정합성 결함 수정 (place-file-hardening)
+
+- 배경: 알려진 이슈 #1(세션 쿠키 설정 미적용), #3(장소 삭제 시 사진 미정리), #4(오류 응답에 서버 경로 노출), #5(사진 업로드 검증 부족).
+- 결정:
+  - 세션 설정을 최상위 `server.servlet.session.*`로 옮겼다.
+  - FileException 메시지에서 경로·IOException을 빼고 로그로만 남긴다.
+  - 장소 사진은 `file.imageTypes`(.jpg .jpeg .png .gif .webp, 대소문자 무시)와 매직 바이트로 검증한다.
+  - 장소 삭제 시 사진·파일 행을 bulk 삭제하고 디스크 파일은 커밋 후에만 지운다.
+  - 장소 수정·삭제는 장소 행을 PESSIMISTIC_WRITE로 잠근다.
+  - 실DB 검증용으로 `testRuntimeOnly 'com.h2database:h2'`(2.4.240)를 추가했다.
+- 고려한 대안: 동시성은 DB FK에 의존하기(DDL 미확인으로 기각), 통합 테스트는 Testcontainers(Docker 미기동, 사용자가 H2 선택).
+- 영향과 후속 작업:
+  - 사진 업로드에 새 오류 코드 `ERR_FILE_INVALID_IMAGE`가 생겼다.
+  - 운영에서는 `SESSION_COOKIE_SECURE=true`가 필요하다.
+  - 남은 minor 이슈:
+    - 락 타임아웃 힌트가 없다(InnoDB 기본 50초 대기).
+    - 수정 중 큰 업로드가 락을 오래 잡는다.
+    - H2와 InnoDB는 동작이 다르다. MySQL Testcontainers는 후속 과제다.
+    - Bookmark·Photo·PlaceReview가 장소를 참조하면 삭제가 실패할 수 있다.
+    - polyglot 이미지를 막지 못한다.
+- 관련 task_id와 증거 경로: `place-file-hardening` — `docs/agent-context/evidence/place-file-hardening/`
+  - HIGH, 재시도 1회
+  - 1회차: FAILED. concurrency-review가 failed였고 important 2건(동시성, 실DB 미검증)이 나왔다.
+  - 2회차: GATE PASSED. 테스트 116건이다.
+  - waive(사용자 승인): api-contract-tests, dependency-scan, sast. 도구가 없어서다.
+
 ## 2026-11-03 — 이슈 #14 테스트 자산 정리
 
 - 배경: `feature/#14`에 수동 테스트용 자산(Q16)이 남아 있어 `main`에 PR을 올리기 전에 정리가 필요했다.
