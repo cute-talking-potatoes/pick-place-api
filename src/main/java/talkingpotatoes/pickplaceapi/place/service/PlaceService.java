@@ -22,6 +22,7 @@ import talkingpotatoes.pickplaceapi.global.exception.PlaceException;
 import talkingpotatoes.pickplaceapi.global.security.UserInfoProvider;
 import talkingpotatoes.pickplaceapi.place.domain.entity.Place;
 import talkingpotatoes.pickplaceapi.place.dto.MapBound;
+import talkingpotatoes.pickplaceapi.place.dto.PlaceCreateResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceDetailResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceMarkerResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceRequest;
@@ -43,13 +44,20 @@ public class PlaceService {
     private final FileService fileService;
     private final FileDownloadService fileDownloadService;
 
+    /**
+     * 장소 등록
+     * <pre>
+     *  - 생성된 장소 번호(plSrl)를 응답으로 돌려준다. (IDENTITY 전략이라 save 시점에 PK가 채워진다)
+     * </pre>
+     */
     @Transactional
-    public void createPlace(PlaceRequest request, List<MultipartFile> files) {
+    public PlaceCreateResponse createPlace(PlaceRequest request, List<MultipartFile> files) {
         Place place = new Place(request);
         placeRepository.save(place);
         if (hasFiles(files)) {
             fileService.uploadPhoto(files, place);
         }
+        return new PlaceCreateResponse(place);
     }
 
     @Transactional
@@ -77,6 +85,25 @@ public class PlaceService {
         userInfoProvider.checkUserAuthorization(place.getCreatedBy()); // 작성자와 수정자가 동일한지 확인
         fileService.deletePlacePhotos(place); // 장소 사진·파일 정리 (FK 참조 행을 먼저 삭제)
         placeRepository.delete(place);
+    }
+
+    /**
+     * 장소 사진 한 장 삭제
+     * <pre>
+     *  1. 장소 행을 쓰기 락으로 조회한다. (장소 삭제·사진 추가와 직렬화)
+     *  2. 작성자 권한을 확인한다. 권한 확인 전에는 사진 존재 여부도 조회하지 않는다.
+     *  3. 사진은 해당 장소 범위 안에서만 조회한다. 다른 장소의 사진 번호이거나 없으면 ERR_PLACE_PHOTO_NOT_FOUND.
+     *  4. 사진·파일 행(tb_photo_file, tb_file, 연결된 tb_user_file)을 삭제한다.
+     *  5. 디스크 파일은 트랜잭션 커밋 이후에만 삭제된다. (롤백 시 유지, 삭제 실패는 로그만 남긴다)
+     * </pre>
+     */
+    @Transactional
+    public void deletePlacePhoto(Long plSrl, Long photoFileSrl) {
+        Place place = getPlaceForUpdate(plSrl);
+        userInfoProvider.checkUserAuthorization(place.getCreatedBy()); // 작성자와 요청자가 동일한지 확인
+        PhotoFile photoFile = photoFileRepository.findByPhotoFileSrlAndPlaceWithFile(photoFileSrl, place)
+                .orElseThrow(() -> new PlaceException(ERR_PLACE_PHOTO_NOT_FOUND));
+        fileService.deletePlacePhoto(photoFile);
     }
 
     public List<PlaceMarkerResponse> findPlacesInMap(MapBound bound) {

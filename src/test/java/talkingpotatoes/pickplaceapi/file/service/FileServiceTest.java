@@ -976,6 +976,87 @@ class FileServiceTest {
         verify(fileRepository, never()).deleteAllByFileSrlIn(any());
     }
 
+    /**
+     * =========================
+     * deletePlacePhoto() - 장소 사진 단건 삭제 테스트
+     * =========================
+     */
+
+    @Test
+    void 장소사진단건삭제시_해당파일의_DB행만_즉시삭제되고_물리파일은_커밋후에_삭제된다() throws IOException {
+        // Given
+        Place place = createPlaceEntity();
+        Path target = writeFile("target");
+        Path remain = writeFile("remain");
+        PhotoFile photoFile = createPhotoFile(createPhotoFileEntity(1L, target, "target.jpg"), place);
+
+        // When
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            fileService.deletePlacePhoto(photoFile);
+
+            // Then - 커밋 전에는 물리 파일이 남아있고, 대상 파일 번호로만 행을 지운다
+            assertTrue(Files.exists(target));
+            verify(userFileRepository).deleteAllByFileSrlIn(List.of(1L));
+            verify(photoFileRepository).deleteAllByFileSrlIn(List.of(1L));
+            verify(fileRepository).deleteAllByFileSrlIn(List.of(1L));
+            verify(photoFileRepository, never()).findByPlaceWithFile(any()); // 장소의 다른 사진은 조회하지 않는다
+        } finally {
+            completeTransaction(TransactionSynchronization.STATUS_COMMITTED);
+        }
+
+        // Then - 커밋 후에는 대상 물리 파일만 삭제된다
+        assertFalse(Files.exists(target));
+        assertTrue(Files.exists(remain));
+    }
+
+    @Test
+    void 장소사진단건삭제후_롤백되면_물리파일은_남아있다() throws IOException {
+        // Given
+        Path photo = writeFile("photo");
+        PhotoFile photoFile = createPhotoFile(createPhotoFileEntity(1L, photo, "photo.jpg"), createPlaceEntity());
+
+        // When
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            fileService.deletePlacePhoto(photoFile);
+        } finally {
+            completeTransaction(TransactionSynchronization.STATUS_ROLLED_BACK);
+        }
+
+        // Then
+        assertTrue(Files.exists(photo));
+    }
+
+    @Test
+    void 장소사진단건삭제후_커밋후_물리파일삭제에_실패해도_예외가발생하지않는다() throws IOException {
+        // Given - 비어있지 않은 디렉토리는 삭제에 실패한다
+        Path undeletable = tempDir.resolve("undeletable");
+        Files.createDirectories(undeletable);
+        Files.write(undeletable.resolve("child"), "x".getBytes(StandardCharsets.UTF_8));
+        PhotoFile photoFile = createPhotoFile(createPhotoFileEntity(1L, undeletable, "broken.jpg"),
+                createPlaceEntity());
+
+        // When & Then
+        assertDoesNotThrow(() -> executeInTransaction(() -> fileService.deletePlacePhoto(photoFile)));
+        assertTrue(Files.exists(undeletable));
+    }
+
+    @Test
+    void 트랜잭션밖에서_장소사진단건삭제를_호출하면_아무것도삭제하지않고_실패한다() throws IOException {
+        // Given
+        Path photo = writeFile("photo");
+        PhotoFile photoFile = createPhotoFile(createPhotoFileEntity(1L, photo, "photo.jpg"), createPlaceEntity());
+
+        // When & Then
+        FileException exception = assertThrows(FileException.class, () -> fileService.deletePlacePhoto(photoFile));
+        assertEquals(ERR_FILE_DELETE_INCORRECT_TRANSACTION.name(), exception.getCode());
+        assertTrue(Files.exists(photo));
+        verify(userFileRepository, never()).deleteAllByFileSrlIn(any());
+        verify(photoFileRepository, never()).deleteAllByFileSrlIn(any());
+        verify(fileRepository, never()).deleteAllByFileSrlIn(any());
+    }
+
     private Path writeFile(String name) throws IOException {
         Path path = tempDir.resolve(name);
         Files.write(path, name.getBytes(StandardCharsets.UTF_8));

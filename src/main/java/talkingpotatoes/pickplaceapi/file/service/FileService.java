@@ -97,40 +97,38 @@ public class FileService {
     }
 
     /**
-     * 장소에 연결된 사진(tb_photo_file)과 파일(tb_file)을 삭제한다.
+     * 장소에 연결된 사진(tb_photo_file)과 파일(tb_file)을 모두 삭제한다.
      * <pre>
      *  - 이 메서드는 자체 인가 검사를 하지 않는다. 호출자가 먼저 장소 작성자 권한을 확인해야 한다.
      *    (장소 사진은 장소 작성자만 등록할 수 있다. 현재 호출자: PlaceService.deletePlace)
      *  - 동시 사진 추가를 막으려면 호출자가 장소 행을 쓰기 락으로 조회한 상태여야 한다.
-     *  - DB 행은 현재 트랜잭션 안에서 삭제하고, 디스크 파일은 트랜잭션이 커밋된 이후에만 삭제한다.
-     *  - 롤백되면 디스크 파일은 그대로 남는다.
-     *  - 커밋 이후 디스크 파일 삭제 실패는 로그만 남기고 요청은 성공으로 처리한다.
-     *  - DB 행은 테이블당 벌크 삭제 1회로 지운다. 벌크 삭제 후 영속성 컨텍스트가 비워지므로
-     *    호출자가 들고 있던 엔티티(Place 등)는 준영속 상태가 된다.
+     *  - DB 행 삭제와 커밋 후 디스크 삭제 규칙은 공용 로직 deletePhotoFiles의 주석을 따른다.
      * </pre>
      *
      * @param place 삭제할 장소
      */
     @Transactional
     public void deletePlacePhotos(Place place) {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) { // 커밋 시점을 알 수 없으면 아무것도 지우지 않는다
-            throw new FileException(ERR_FILE_DELETE_INCORRECT_TRANSACTION);
-        }
+        requireTransactionForDelete();
+        deletePhotoFiles(photoFileRepository.findByPlaceWithFile(place));
+    }
 
-        List<File> filesToDelete = photoFileRepository.findByPlaceWithFile(place).stream()
-                .map(PhotoFile::getFile)
-                .toList();
-
-        if (filesToDelete.isEmpty()) {
-            return;
-        }
-
-        List<Path> filePaths = filesToDelete.stream()
-                .map(file -> Path.of(file.getFileSrc()))
-                .toList();
-
-        registerAfterCommitFileCleanup(filePaths); // 커밋 후 디스크 파일 삭제 콜백 등록
-        fileMetadataService.deleteAll(filesToDelete.stream().map(File::getFileSrl).toList());
+    /**
+     * 장소 사진 한 장(tb_photo_file)과 그 파일(tb_file, 연결된 tb_user_file 포함)을 삭제한다.
+     * <pre>
+     *  - 이 메서드는 자체 인가 검사를 하지 않는다. 호출자가 먼저 장소 작성자 권한을 확인하고,
+     *    사진이 그 장소에 속하는지 장소 범위 조회로 확인한 뒤 넘겨야 한다.
+     *    (현재 호출자: PlaceService.deletePlacePhoto)
+     *  - 장소 삭제·사진 추가와 직렬화하려면 호출자가 장소 행을 쓰기 락으로 조회한 상태여야 한다.
+     *  - DB 행 삭제와 커밋 후 디스크 삭제 규칙은 공용 로직 deletePhotoFiles의 주석을 따른다.
+     * </pre>
+     *
+     * @param photoFile 삭제할 장소 사진 (파일 엔티티가 함께 조회된 상태)
+     */
+    @Transactional
+    public void deletePlacePhoto(PhotoFile photoFile) {
+        requireTransactionForDelete();
+        deletePhotoFiles(List.of(photoFile));
     }
 
     // 파일 다운로드
@@ -167,6 +165,39 @@ public class FileService {
             localFileStorageService.save(fileMetadata);
             saveMethod.accept(fileMetadata);
         }
+    }
+
+    // 커밋 시점을 알 수 없으면 아무것도 지우지 않는다
+    private void requireTransactionForDelete() {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            throw new FileException(ERR_FILE_DELETE_INCORRECT_TRANSACTION);
+        }
+    }
+
+    /**
+     * 장소 사진 단건/다건 삭제 공용 로직
+     * <pre>
+     *  - DB 행은 현재 트랜잭션 안에서 테이블당 벌크 삭제 1회로 지운다. (tb_user_file → tb_photo_file → tb_file)
+     *  - 디스크 파일은 트랜잭션이 커밋된 이후에만 삭제한다. 롤백되면 디스크 파일은 그대로 남는다.
+     *  - 커밋 이후 디스크 파일 삭제 실패는 로그만 남기고 요청은 성공으로 처리한다.
+     *  - 벌크 삭제 후 영속성 컨텍스트가 비워지므로 호출자가 들고 있던 엔티티(Place 등)는 준영속 상태가 된다.
+     * </pre>
+     */
+    private void deletePhotoFiles(List<PhotoFile> photoFiles) {
+        List<File> filesToDelete = photoFiles.stream()
+                .map(PhotoFile::getFile)
+                .toList();
+
+        if (filesToDelete.isEmpty()) {
+            return;
+        }
+
+        List<Path> filePaths = filesToDelete.stream()
+                .map(file -> Path.of(file.getFileSrc()))
+                .toList();
+
+        registerAfterCommitFileCleanup(filePaths); // 커밋 후 디스크 파일 삭제 콜백 등록
+        fileMetadataService.deleteAll(filesToDelete.stream().map(File::getFileSrl).toList());
     }
 
     private void registerRollbackFileCleanup(Path dirPath, List<Path> savedFilePaths) {

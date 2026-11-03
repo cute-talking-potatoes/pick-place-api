@@ -22,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
 import talkingpotatoes.pickplaceapi.global.api.ApiResponse;
 import talkingpotatoes.pickplaceapi.place.dto.MapBound;
+import talkingpotatoes.pickplaceapi.place.dto.PlaceCreateResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceDetailResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceMarkerResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceRequest;
@@ -51,12 +52,11 @@ public class PlaceController {
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<ApiResponse<Void>> createPlace(
+    public ResponseEntity<ApiResponse<PlaceCreateResponse>> createPlace(
             @RequestPart("request") PlaceRequest request,
             @RequestPart(value = "files", required = false) List<MultipartFile> files
     ) {
-        placeService.createPlace(request, files);
-        return ApiResponse.ok(SUC_PLACE_CREATE);
+        return ApiResponse.ok(SUC_PLACE_CREATE, placeService.createPlace(request, files));
     }
 
     @PatchMapping(value = "/{plSrl}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -75,6 +75,15 @@ public class PlaceController {
     ) {
         placeService.deletePlace(plSrl);
         return ApiResponse.ok(SUC_PLACE_DELETE);
+    }
+
+    @DeleteMapping("/{plSrl}/photos/{photoFileSrl}")
+    public ResponseEntity<ApiResponse<Void>> deletePlacePhoto(
+            @PathVariable Long plSrl,
+            @PathVariable Long photoFileSrl
+    ) {
+        placeService.deletePlacePhoto(plSrl, photoFileSrl);
+        return ApiResponse.ok(SUC_PLACE_PHOTO_DELETE);
     }
 
     @GetMapping("/photos/{photoFileSrl}")

@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
 import static talkingpotatoes.pickplaceapi.global.exception.ExceptionCode.ERR_AUTH_ACCESS_DENIED;
 import static talkingpotatoes.pickplaceapi.global.exception.ExceptionCode.ERR_PLACE_NOT_FOUND;
+import static talkingpotatoes.pickplaceapi.global.exception.ExceptionCode.ERR_PLACE_PHOTO_NOT_FOUND;
 
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -35,6 +36,7 @@ import talkingpotatoes.pickplaceapi.global.exception.PlaceException;
 import talkingpotatoes.pickplaceapi.global.security.UserInfoProvider;
 import talkingpotatoes.pickplaceapi.place.domain.entity.Place;
 import talkingpotatoes.pickplaceapi.place.dto.MapBound;
+import talkingpotatoes.pickplaceapi.place.dto.PlaceCreateResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceDetailResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceMarkerResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceRequest;
@@ -76,10 +78,17 @@ class PlaceServiceTest {
         PlaceRequest request = createRequest("경복궁", 37.5786111111, 126.9772222222);
         List<MultipartFile> files = List.of(createFile("photo.jpg"));
 
+        given(placeRepository.save(any(Place.class))).willAnswer(invocation -> {
+            Place saving = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saving, "plSrl", 10L); // IDENTITY 전략처럼 저장 시 PK가 채워진다
+            return saving;
+        });
+
         // When
-        placeService.createPlace(request, files);
+        PlaceCreateResponse response = placeService.createPlace(request, files);
 
         // Then
+        assertEquals(10L, response.plSrl());
         ArgumentCaptor<Place> placeCaptor = ArgumentCaptor.forClass(Place.class);
         then(placeRepository).should().save(placeCaptor.capture());
 
@@ -225,6 +234,92 @@ class PlaceServiceTest {
         assertThrows(AuthException.class, () -> placeService.deletePlace(1L));
         then(fileService).should(never()).deletePlacePhotos(any());
         then(placeRepository).should(never()).delete(any(Place.class));
+    }
+
+    @Test
+    void 작성자가_장소사진을_한장_삭제한다() {
+        // Given
+        Place place = createPlace(1L, WRITER_ID, createRequest("경복궁", 37.5786111111, 126.9772222222));
+        PhotoFile photoFile = createPhotoFile(11L, createFileEntity(101L, "gyeongbokgung-1.jpg", ".jpg"), place);
+        given(placeRepository.findByIdForUpdate(1L)).willReturn(Optional.of(place));
+        given(photoFileRepository.findByPhotoFileSrlAndPlaceWithFile(11L, place)).willReturn(Optional.of(photoFile));
+
+        // When
+        placeService.deletePlacePhoto(1L, 11L);
+
+        // Then - 장소 락 조회 → 권한 확인 → 장소 범위 사진 조회 → 사진 삭제 순서로 수행된다
+        InOrder inOrder = inOrder(placeRepository, userInfoProvider, photoFileRepository, fileService);
+        inOrder.verify(placeRepository).findByIdForUpdate(1L);
+        inOrder.verify(userInfoProvider).checkUserAuthorization(WRITER_ID);
+        inOrder.verify(photoFileRepository).findByPhotoFileSrlAndPlaceWithFile(11L, place);
+        inOrder.verify(fileService).deletePlacePhoto(photoFile);
+        then(placeRepository).should(never()).findById(any()); // 락 없는 조회를 쓰지 않는다
+        then(photoFileRepository).should(never()).findByPhotoFileSrlWithFile(any()); // 장소 범위 밖 조회를 쓰지 않는다
+        then(fileService).should(never()).deletePlacePhotos(any());
+        then(placeRepository).should(never()).delete(any(Place.class));
+    }
+
+    @Test
+    void 작성자가_아닌_사용자가_장소사진을_삭제하면_예외가발생하고_아무것도_삭제하지않는다() {
+        // Given
+        Place place = createPlace(1L, WRITER_ID, createRequest("경복궁", 37.5786111111, 126.9772222222));
+        given(placeRepository.findByIdForUpdate(1L)).willReturn(Optional.of(place));
+        willThrow(new AuthException(ERR_AUTH_ACCESS_DENIED))
+                .given(userInfoProvider)
+                .checkUserAuthorization(WRITER_ID);
+
+        // When & Then
+        assertThrows(AuthException.class, () -> placeService.deletePlacePhoto(1L, 11L));
+        then(photoFileRepository).should(never()).findByPhotoFileSrlAndPlaceWithFile(any(), any()); // 존재 여부도 노출하지 않는다
+        then(fileService).should(never()).deletePlacePhoto(any());
+        then(fileService).should(never()).deletePlacePhotos(any());
+    }
+
+    @Test
+    void 존재하지않는_장소의_사진을_삭제하면_예외가발생한다() {
+        // Given
+        given(placeRepository.findByIdForUpdate(1L)).willReturn(Optional.empty());
+
+        // When & Then
+        PlaceException exception = assertThrows(PlaceException.class, () -> placeService.deletePlacePhoto(1L, 11L));
+        assertEquals(ERR_PLACE_NOT_FOUND.name(), exception.getCode());
+        then(userInfoProvider).should(never()).checkUserAuthorization(any());
+        then(photoFileRepository).should(never()).findByPhotoFileSrlAndPlaceWithFile(any(), any());
+        then(fileService).should(never()).deletePlacePhoto(any());
+    }
+
+    @Test
+    void 존재하지않는_사진을_삭제하면_예외가발생한다() {
+        // Given
+        Place place = createPlace(1L, WRITER_ID, createRequest("경복궁", 37.5786111111, 126.9772222222));
+        given(placeRepository.findByIdForUpdate(1L)).willReturn(Optional.of(place));
+        given(photoFileRepository.findByPhotoFileSrlAndPlaceWithFile(999L, place)).willReturn(Optional.empty());
+
+        // When & Then
+        PlaceException exception = assertThrows(PlaceException.class,
+                () -> placeService.deletePlacePhoto(1L, 999L));
+        assertEquals(ERR_PLACE_PHOTO_NOT_FOUND.name(), exception.getCode());
+        then(userInfoProvider).should().checkUserAuthorization(WRITER_ID);
+        then(fileService).should(never()).deletePlacePhoto(any());
+    }
+
+    @Test
+    void 다른장소의_사진번호로_삭제하면_예외가발생하고_삭제하지않는다() {
+        // Given - 21번 사진은 실제로 존재하지만 2번 장소의 사진이다
+        Place place = createPlace(1L, WRITER_ID, createRequest("경복궁", 37.5786111111, 126.9772222222));
+        Place otherPlace = createPlace(2L, WRITER_ID, createRequest("창덕궁", 37.5794444444, 126.9911111111));
+        PhotoFile otherPlacePhoto = createPhotoFile(21L, createFileEntity(201L, "changdeokgung.jpg", ".jpg"),
+                otherPlace);
+        given(placeRepository.findByIdForUpdate(1L)).willReturn(Optional.of(place));
+        given(photoFileRepository.findByPhotoFileSrlAndPlaceWithFile(21L, place)).willReturn(Optional.empty());
+        lenient().when(photoFileRepository.findByPhotoFileSrlWithFile(21L)).thenReturn(Optional.of(otherPlacePhoto));
+
+        // When & Then
+        PlaceException exception = assertThrows(PlaceException.class,
+                () -> placeService.deletePlacePhoto(1L, 21L));
+        assertEquals(ERR_PLACE_PHOTO_NOT_FOUND.name(), exception.getCode());
+        then(fileService).should(never()).deletePlacePhoto(any());
+        then(fileService).should(never()).deletePlacePhotos(any());
     }
 
     @Test

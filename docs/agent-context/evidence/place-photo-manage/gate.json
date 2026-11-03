@@ -1,0 +1,24 @@
+{
+  "checks": {
+    "api-contract-tests": "passed",
+    "build": "passed",
+    "concurrency-review": "passed",
+    "dependency-scan": "waived",
+    "injection-review": "passed",
+    "integration-tests": "passed",
+    "lint": "passed",
+    "sast": "waived",
+    "secrets-scan": "passed",
+    "unit-tests": "passed"
+  },
+  "evaluated_at": "2026-11-03T13:50:50+00:00",
+  "not_applicable": {},
+  "status": "PASSED",
+  "task_id": "place-photo-manage",
+  "tier": "HIGH",
+  "waive_reason": "사용자 승인(2026-11-03): SAST 도구 없음, injection-review 수동 리뷰 통과",
+  "waived": [
+    "dependency-scan",
+    "sast"
+  ]
+}

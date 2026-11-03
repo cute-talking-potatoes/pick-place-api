@@ -19,6 +19,7 @@ public enum SuccessCode {
     SUC_PLACE_CREATE("장소 등록 성공"),
     SUC_PLACE_UPDATE("장소 수정 성공"),
     SUC_PLACE_DELETE("장소 삭제 성공"),
+    SUC_PLACE_PHOTO_DELETE("장소 사진 삭제 성공"),
     ;
 
     private final String message;

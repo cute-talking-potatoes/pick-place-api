@@ -1,0 +1,67 @@
+{
+  "checks": {
+    "api-contract-tests": {
+      "command": "./gradlew --no-daemon test --rerun --tests *PlaceControllerTest --tests *AuthControllerTest",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "api-contract-tests.log",
+      "recorded_at": "2026-11-03T13:49:04+00:00",
+      "status": "passed"
+    },
+    "build": {
+      "command": "./gradlew --no-daemon build",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "build.log",
+      "recorded_at": "2026-11-03T13:48:50+00:00",
+      "status": "passed"
+    },
+    "concurrency-review": {
+      "exit_code": 0,
+      "kind": "manual",
+      "log": "concurrency-review.log",
+      "recorded_at": "2026-11-03T13:50:06+00:00",
+      "status": "passed"
+    },
+    "injection-review": {
+      "exit_code": 0,
+      "kind": "manual",
+      "log": "injection-review.log",
+      "recorded_at": "2026-11-03T13:49:12+00:00",
+      "status": "passed"
+    },
+    "integration-tests": {
+      "command": "./gradlew --no-daemon test --rerun --tests *IntegrationTest --tests *PickPlaceApiApplicationTests",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "integration-tests.log",
+      "recorded_at": "2026-11-03T13:48:59+00:00",
+      "status": "passed"
+    },
+    "lint": {
+      "command": "./gradlew --no-daemon checkstyleMain checkstyleTest",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "lint.log",
+      "recorded_at": "2026-11-03T13:48:46+00:00",
+      "status": "passed"
+    },
+    "secrets-scan": {
+      "command": "bash -o pipefail -c set -e; echo \"scope: git diff HEAD -- src + untracked files under src\"; git ls-files --others --exclude-standard -- src; { git diff HEAD -- src; git ls-files --others --exclude-standard -z -- src | xargs -0 cat; } | python3 .claude/skills/quality-gate/scripts/scrub_secrets.py --check && echo \"no secret patterns found in src changes\"",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "secrets-scan.log",
+      "recorded_at": "2026-11-03T13:48:49+00:00",
+      "status": "passed"
+    },
+    "unit-tests": {
+      "command": "./gradlew --no-daemon clean test --rerun",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "unit-tests.log",
+      "recorded_at": "2026-11-03T13:48:37+00:00",
+      "status": "passed"
+    }
+  },
+  "task_id": "place-photo-manage"
+}

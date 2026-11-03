@@ -55,4 +55,22 @@ public interface PhotoFileRepository extends JpaRepository<PhotoFile, Long> {
                 WHERE pf.photoFileSrl = :photoFileSrl
             """)
     Optional<PhotoFile> findByPhotoFileSrlWithFile(@Param("photoFileSrl") Long photoFileSrl);
+
+    /**
+     * 지정한 장소에 속한 사진만 파일과 함께 조회한다.
+     * <pre>
+     *  - 다른 장소의 사진 번호를 넣어도 조회되지 않으므로 사진 번호만으로 남의 사진에 접근하는 것을 막는다.
+     * </pre>
+     */
+    @Query("""
+                SELECT pf
+                FROM PhotoFile pf
+                JOIN FETCH pf.file
+                WHERE pf.photoFileSrl = :photoFileSrl
+                  AND pf.place = :place
+            """)
+    Optional<PhotoFile> findByPhotoFileSrlAndPlaceWithFile(
+            @Param("photoFileSrl") Long photoFileSrl,
+            @Param("place") Place place
+    );
 }

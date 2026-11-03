@@ -2,6 +2,23 @@
 
 새 결정은 맨 위에 추가한다. 오케스트레이터는 작업을 마칠 때 주요 결정을 이 형식으로 기록한다.
 
+## 2026-11-03 — 장소 등록 응답 plSrl·사진 개별 삭제 API (place-photo-manage)
+
+- 배경: 알려진 이슈 #8(등록 응답에 생성 ID 없음), #19(사진 개별 삭제 API 없음).
+- 결정:
+  - `POST /api/place` 응답 data를 `{ plSrl }`로 바꿨다. 하위 호환이다.
+  - `DELETE /api/place/{plSrl}/photos/{photoFileSrl}`를 추가했다. 처리 순서는 장소 행 락 → 작성자 인가 → 해당 장소 소속 사진만 조회 → 행 bulk 삭제 → 커밋 후 디스크 삭제다.
+  - 없는 사진과 다른 장소의 사진은 같은 응답(`ERR_PLACE_PHOTO_NOT_FOUND`)으로 구분하지 않는다.
+  - 단건 삭제와 다건 삭제는 FileService의 공용 로직을 쓴다.
+- 고려한 대안: photoFileSrl만으로 사진을 조회한 뒤 장소를 비교하기(IDOR 회귀 위험이 있어 쿼리에서 장소 범위로 조회하는 방식 채택).
+- 영향과 후속 작업:
+  - 사진 순서 변경 API는 아직 없다.
+  - 일반 파일 삭제 `FileService.delete`는 락 없이 커밋 전에 디스크를 지운다(#17, 별도 이슈).
+  - 같은 사진을 동시에 삭제하는 경우는 MySQL에서 검증하지 않았다(H2만).
+- 관련 task_id와 증거 경로: `place-photo-manage` — `docs/agent-context/evidence/place-photo-manage/`
+  - HIGH, 재시도 없이 GATE PASSED, 테스트 148건
+  - dependency-scan·sast는 사용자 승인으로 waive했다(의존성 변경 없음, 도구 없음).
+
 ## 2026-11-03 — 장소 상세 조회 API (place-detail-api)
 
 - 배경: 지도 마커 클릭 후 보여줄 상세 화면용 API가 없었다.

@@ -46,6 +46,7 @@ public enum ExceptionCode {
     ERR_PLACE_INVALID_LATITUDE(HttpStatus.BAD_REQUEST, "위도가 유효한 범위가 아닙니다."),
     ERR_PLACE_INVALID_LONGITUDE(HttpStatus.BAD_REQUEST, "경도가 유효한 범위가 아닙니다."),
     ERR_PLACE_NOT_FOUND(HttpStatus.BAD_REQUEST, "요청한 장소를 찾을 수 없습니다."),
+    ERR_PLACE_PHOTO_NOT_FOUND(HttpStatus.BAD_REQUEST, "요청한 장소 사진을 찾을 수 없습니다."),
     ;
     private final HttpStatus status;
     private final String korErrorMessage;
