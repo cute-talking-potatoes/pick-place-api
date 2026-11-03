@@ -1,0 +1,29 @@
+{
+  "checks": {
+    "build": {
+      "command": "./gradlew --no-daemon build",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "build.log",
+      "recorded_at": "2026-11-03T12:19:43+00:00",
+      "status": "passed"
+    },
+    "lint": {
+      "command": "./gradlew --no-daemon checkstyleMain checkstyleTest",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "lint.log",
+      "recorded_at": "2026-11-03T12:19:39+00:00",
+      "status": "passed"
+    },
+    "unit-tests": {
+      "command": "./gradlew --no-daemon test",
+      "exit_code": 0,
+      "kind": "command",
+      "log": "unit-tests.log",
+      "recorded_at": "2026-11-03T12:19:35+00:00",
+      "status": "passed"
+    }
+  },
+  "task_id": "issue14-cleanup"
+}

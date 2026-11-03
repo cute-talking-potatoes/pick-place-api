@@ -1,0 +1,14 @@
+{
+  "checks": {
+    "build": "passed",
+    "lint": "passed",
+    "unit-tests": "passed"
+  },
+  "evaluated_at": "2026-11-03T12:19:43+00:00",
+  "not_applicable": {},
+  "status": "PASSED",
+  "task_id": "issue14-cleanup",
+  "tier": "LOW",
+  "waive_reason": null,
+  "waived": []
+}

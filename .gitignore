@@ -213,3 +213,6 @@ gradle-app.setting
 /.devhub/generated.json
 /.devhub/devlog/
 # <<< devhub generated <<<
+
+# 로컬 업로드 파일 저장소 (file.filePath)
+/files/

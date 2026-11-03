@@ -2,6 +2,22 @@
 
 새 결정은 맨 위에 추가한다. 오케스트레이터는 작업을 마칠 때 주요 결정을 이 형식으로 기록한다.
 
+## 2026-11-03 — 이슈 #14 테스트 자산 정리
+
+- 배경: `feature/#14`에 수동 테스트용 자산(Q16)이 남아 있어 `main`에 PR을 올리기 전에 정리가 필요했다.
+- 결정(사용자 승인): `PlacePageController`·`static/test/place.html` 삭제, 미추적 `templates/file-test.html` 삭제, `FileController`의 주석 처리 테스트 코드와 `SecurityConfig`의 `/test/place` 허용은 커밋 상태로 되돌림, `/files/` 업로드 디렉토리를 `.gitignore`에 추가(디스크 파일은 유지).
+- 고려한 대안: 프론트 연동 전까지 테스트 페이지 유지(사용자가 삭제 선택).
+- 영향과 후속 작업: 지도 수동 테스트 페이지가 없어진다. 샌드박스에서 시작된 Gradle 데몬이 `.gradle` 잠금 파일 쓰기를 막아 검사가 환경 문제로 실패했고, `--no-daemon`으로 다시 실행해 통과했다.
+- 관련 task_id와 증거 경로: `issue14-cleanup` — `docs/agent-context/evidence/issue14-cleanup/` (LOW, unit-tests·lint·build passed, GATE: PASSED)
+
+## 2026-11-03 — devhub를 hub 최신(e307d5f)으로 업데이트
+
+- 배경: `devhub status`가 `external_skills must be <plugin>:<skill>` 오류로 실패했다. 설치된 devhub CLI는 hub `3ae5e1a`부터 생긴 `superpowers:<이름>` 형식을 요구하는데, `hub.lock`은 그 이전 `ed3e189`에 고정되어 예전 형식(`test-driven-development`)의 에이전트 정의를 읽고 있었다.
+- 결정: `devhub update --latest` → `devhub sync`로 `e307d5f`에 맞췄다. 생성 파일(CLAUDE.md, AGENTS.md, `.claude/`, `.codex/`, `.agents/`)을 바꿨고 overlay는 비어 있어 덮어쓴 수정은 없다.
+- 고려한 대안: hub 저장소를 직접 고치기(원격 main에 이미 수정이 있어 불필요).
+- 영향과 후속 작업: 플러그인 Skill이 선택적 보조로 표시되고, `docs/agent-context/gate-policy.json`으로 `lint`·`integration-tests`·`api-contract-tests`를 해당 없음으로 선언할 수 있게 됐다(사용자만 작성). `.devhub/hub.lock` 변경은 커밋 대상이다. 로컬 hub 클론(`~/.devhub/hub`)은 원격보다 4커밋 뒤처져 있다(devhub는 스냅샷을 쓰므로 동작에는 영향 없음).
+- 관련 task_id와 증거 경로: 없음(설정 작업, `devhub status` → `clean`)
+
 ## 2026-11-02 — 린트 도입: Checkstyle(네이버 컨벤션 v1.2 + 커스텀)
 
 - 배경: 린트 도구가 없어 모든 작업의 품질 게이트가 `lint` UNVERIFIED에서 멈췄다(Q20). IntelliJ에는 네이버 코딩 컨벤션 v1.2 스킴(들여쓰기 공백 4칸)이 설정되어 있었지만 터미널·에이전트에서는 검사할 수 없었다.
