@@ -3,8 +3,10 @@ package talkingpotatoes.pickplaceapi.place.service;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.BDDMockito.*;
 import static talkingpotatoes.pickplaceapi.global.exception.ExceptionCode.ERR_AUTH_ACCESS_DENIED;
+import static talkingpotatoes.pickplaceapi.global.exception.ExceptionCode.ERR_PLACE_NOT_FOUND;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -20,6 +22,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import talkingpotatoes.pickplaceapi.file.domain.entity.File;
@@ -32,6 +35,7 @@ import talkingpotatoes.pickplaceapi.global.exception.PlaceException;
 import talkingpotatoes.pickplaceapi.global.security.UserInfoProvider;
 import talkingpotatoes.pickplaceapi.place.domain.entity.Place;
 import talkingpotatoes.pickplaceapi.place.dto.MapBound;
+import talkingpotatoes.pickplaceapi.place.dto.PlaceDetailResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceMarkerResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceRequest;
 import talkingpotatoes.pickplaceapi.place.repository.PlaceRepository;
@@ -281,6 +285,121 @@ class PlaceServiceTest {
         // When & Then
         assertThrows(PlaceException.class, () -> placeService.displayPhoto(11L, new HttpHeaders()));
         then(fileDownloadService).should(never()).displayImage(any(), any());
+    }
+
+    @Test
+    void 작성자가_장소상세를_조회하면_사진과_함께_isOwner가_true다() {
+        // Given
+        Place place = createPlace(1L, WRITER_ID, new PlaceRequest(
+                "경복궁", "조선 법궁", "서울 종로구 사직로 161", "광화문", "03045", 37.5786111111, 126.9772222222
+        ));
+        LocalDateTime createdAt = LocalDateTime.of(2026, 11, 1, 10, 0);
+        LocalDateTime updatedAt = LocalDateTime.of(2026, 11, 2, 11, 30);
+        ReflectionTestUtils.setField(place, "createdAt", createdAt);
+        ReflectionTestUtils.setField(place, "updatedAt", updatedAt);
+        PhotoFile photoFile1 = createPhotoFile(11L, createFileEntity(101L, "gyeongbokgung-1.jpg", ".jpg"), place);
+        PhotoFile photoFile2 = createPhotoFile(12L, createFileEntity(102L, "gyeongbokgung-2.png", ".png"), place);
+        given(placeRepository.findById(1L)).willReturn(Optional.of(place));
+        given(photoFileRepository.findByPlaceWithFile(place)).willReturn(List.of(photoFile1, photoFile2));
+        given(userInfoProvider.getUserId()).willReturn(WRITER_ID);
+
+        // When
+        PlaceDetailResponse result = placeService.findPlaceDetail(1L);
+
+        // Then
+        assertAll(
+                () -> assertEquals(1L, result.plSrl()),
+                () -> assertEquals("경복궁", result.plNm()),
+                () -> assertEquals("조선 법궁", result.plDesc()),
+                () -> assertEquals("서울 종로구 사직로 161", result.plAddr1()),
+                () -> assertEquals("광화문", result.plAddr2()),
+                () -> assertEquals("03045", result.plCd()),
+                () -> assertEquals(37.5786111111, result.plLat()),
+                () -> assertEquals(126.9772222222, result.plLng()),
+                () -> assertEquals(createdAt, result.createdAt()),
+                () -> assertEquals(updatedAt, result.updatedAt()),
+                () -> assertTrue(result.isOwner()),
+                () -> assertEquals(2, result.photos().size()),
+                () -> assertEquals(11L, result.photos().get(0).photoFileSrl()),
+                () -> assertEquals(101L, result.photos().get(0).fileSrl()),
+                () -> assertEquals("gyeongbokgung-1.jpg", result.photos().get(0).fileName()),
+                () -> assertEquals(".jpg", result.photos().get(0).fileExtension()),
+                () -> assertEquals("/api/place/photos/11", result.photos().get(0).imageUrl()),
+                () -> assertEquals(12L, result.photos().get(1).photoFileSrl()),
+                () -> assertEquals("/api/place/photos/12", result.photos().get(1).imageUrl())
+        );
+        then(placeRepository).should(never()).findByIdForUpdate(any()); // 조회는 락을 쓰지 않는다
+        then(photoFileRepository).should(never()).findByPlaceInWithFile(any());
+    }
+
+    @Test
+    void 작성자가_아닌_사용자가_장소상세를_조회하면_isOwner가_false다() {
+        // Given
+        Place place = createPlace(1L, WRITER_ID, createRequest("경복궁", 37.5786111111, 126.9772222222));
+        given(placeRepository.findById(1L)).willReturn(Optional.of(place));
+        given(photoFileRepository.findByPlaceWithFile(place)).willReturn(List.of());
+        given(userInfoProvider.getUserId()).willReturn("other");
+
+        // When
+        PlaceDetailResponse result = placeService.findPlaceDetail(1L);
+
+        // Then
+        assertFalse(result.isOwner());
+        then(userInfoProvider).should(never()).checkUserAuthorization(any()); // 타인도 조회는 가능하다
+    }
+
+    @Test
+    void 작성자정보가_없는_장소상세를_조회하면_isOwner가_false다() {
+        // Given
+        Place place = createPlace(1L, null, createRequest("경복궁", 37.5786111111, 126.9772222222));
+        given(placeRepository.findById(1L)).willReturn(Optional.of(place));
+        given(photoFileRepository.findByPlaceWithFile(place)).willReturn(List.of());
+        given(userInfoProvider.getUserId()).willReturn(WRITER_ID);
+
+        // When
+        PlaceDetailResponse result = placeService.findPlaceDetail(1L);
+
+        // Then
+        assertFalse(result.isOwner());
+    }
+
+    @Test
+    void 사진이_없는_장소상세를_조회하면_빈_사진목록을_반환한다() {
+        // Given
+        Place place = createPlace(1L, WRITER_ID, createRequest("경복궁", 37.5786111111, 126.9772222222));
+        given(placeRepository.findById(1L)).willReturn(Optional.of(place));
+        given(photoFileRepository.findByPlaceWithFile(place)).willReturn(List.of());
+        given(userInfoProvider.getUserId()).willReturn(WRITER_ID);
+
+        // When
+        PlaceDetailResponse result = placeService.findPlaceDetail(1L);
+
+        // Then
+        assertNotNull(result.photos());
+        assertTrue(result.photos().isEmpty());
+    }
+
+    @Test
+    void 존재하지않는_장소상세를_조회하면_예외가발생한다() {
+        // Given
+        given(placeRepository.findById(1L)).willReturn(Optional.empty());
+
+        // When & Then
+        PlaceException exception = assertThrows(PlaceException.class, () -> placeService.findPlaceDetail(1L));
+        assertEquals(ERR_PLACE_NOT_FOUND.name(), exception.getCode());
+        then(photoFileRepository).should(never()).findByPlaceWithFile(any());
+    }
+
+    @Test
+    void 장소상세조회는_읽기전용_트랜잭션으로_수행된다() throws NoSuchMethodException {
+        // When
+        Transactional transactional = PlaceService.class
+                .getMethod("findPlaceDetail", Long.class)
+                .getAnnotation(Transactional.class);
+
+        // Then
+        assertNotNull(transactional);
+        assertTrue(transactional.readOnly());
     }
 
     private PlaceRequest createRequest(String name, Double lat, Double lng) {

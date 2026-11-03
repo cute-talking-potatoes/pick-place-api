@@ -1,0 +1,19 @@
+{
+  "checks": {
+    "api-contract-tests": "passed",
+    "build": "passed",
+    "dependency-scan": "waived",
+    "integration-tests": "passed",
+    "lint": "passed",
+    "unit-tests": "passed"
+  },
+  "evaluated_at": "2026-11-03T13:38:44+00:00",
+  "not_applicable": {},
+  "status": "PASSED",
+  "task_id": "place-detail-api",
+  "tier": "MEDIUM",
+  "waive_reason": "사용자 승인(2026-11-03): 의존성 변경 없음, 스캔 도구 없음",
+  "waived": [
+    "dependency-scan"
+  ]
+}

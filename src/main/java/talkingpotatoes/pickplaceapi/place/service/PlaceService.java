@@ -22,6 +22,7 @@ import talkingpotatoes.pickplaceapi.global.exception.PlaceException;
 import talkingpotatoes.pickplaceapi.global.security.UserInfoProvider;
 import talkingpotatoes.pickplaceapi.place.domain.entity.Place;
 import talkingpotatoes.pickplaceapi.place.dto.MapBound;
+import talkingpotatoes.pickplaceapi.place.dto.PlaceDetailResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceMarkerResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceRequest;
 import talkingpotatoes.pickplaceapi.place.repository.PlaceRepository;
@@ -88,6 +89,22 @@ public class PlaceService {
                         photoFileMap.getOrDefault(place.getPlSrl(), List.of())
                 ))
                 .toList();
+    }
+
+    /**
+     * 장소 상세 조회
+     * <pre>
+     *  - 락 없이 조회한다. (읽기 전용 트랜잭션)
+     *  - 사진은 장소 1건 기준 JOIN FETCH 쿼리 1회로 photoFileSrl 오름차순 조회한다.
+     *  - 작성자 아이디는 응답에 넣지 않고, 현재 사용자가 작성자인지만 isOwner로 내려준다.
+     * </pre>
+     */
+    @Transactional(readOnly = true)
+    public PlaceDetailResponse findPlaceDetail(Long plSrl) {
+        Place place = getPlace(plSrl);
+        List<PhotoFile> photoFiles = photoFileRepository.findByPlaceWithFile(place);
+        boolean isOwner = userInfoProvider.getUserId().equals(place.getCreatedBy());
+        return new PlaceDetailResponse(place, photoFiles, isOwner);
     }
 
     public Resource displayPhoto(Long photoFileSrl, HttpHeaders headers) {

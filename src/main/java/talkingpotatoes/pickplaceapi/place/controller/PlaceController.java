@@ -22,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import lombok.RequiredArgsConstructor;
 import talkingpotatoes.pickplaceapi.global.api.ApiResponse;
 import talkingpotatoes.pickplaceapi.place.dto.MapBound;
+import talkingpotatoes.pickplaceapi.place.dto.PlaceDetailResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceMarkerResponse;
 import talkingpotatoes.pickplaceapi.place.dto.PlaceRequest;
 import talkingpotatoes.pickplaceapi.place.service.PlaceService;
@@ -42,6 +43,11 @@ public class PlaceController {
     @PostMapping("/map")
     public ResponseEntity<ApiResponse<List<PlaceMarkerResponse>>> findPlacesInMap(@RequestBody MapBound mapBound) {
         return ApiResponse.ok(SUC_PLACE_FIND, placeService.findPlacesInMap(mapBound));
+    }
+
+    @GetMapping("/{plSrl}")
+    public ResponseEntity<ApiResponse<PlaceDetailResponse>> findPlaceDetail(@PathVariable Long plSrl) {
+        return ApiResponse.ok(SUC_PLACE_FIND, placeService.findPlaceDetail(plSrl));
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

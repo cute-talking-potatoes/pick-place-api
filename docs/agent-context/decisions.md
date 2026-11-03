@@ -2,6 +2,24 @@
 
 새 결정은 맨 위에 추가한다. 오케스트레이터는 작업을 마칠 때 주요 결정을 이 형식으로 기록한다.
 
+## 2026-11-03 — 장소 상세 조회 API (place-detail-api)
+
+- 배경: 지도 마커 클릭 후 보여줄 상세 화면용 API가 없었다.
+- 결정:
+  - `GET /api/place/{plSrl}`를 추가했다. 응답은 `PlaceDetailResponse`로, 장소 필드, 사진(오름차순), createdAt/updatedAt, isOwner를 담는다.
+  - 작성자 user_id(createdBy)는 응답에 넣지 않고, 작성자인지 여부만 isOwner로 알린다.
+  - readOnly 트랜잭션, 락 없음, 사진 JOIN FETCH 1회.
+  - 없는 장소는 기존 `ERR_PLACE_NOT_FOUND`(400)를 유지했다.
+- 고려한 대안: 작성자 아이디를 노출하기(개인정보 노출을 이유로 기각), 404로 바꾸기(Q8 미결이라 보류).
+- 영향과 후속 작업:
+  - 공개 범위(Q4)를 도입할 때 상세 조회와 지도 조회에 같은 필터를 적용해야 한다. 그러지 않으면 IDOR가 된다.
+  - 경로 변수 타입 불일치(`/api/place/abc`)는 공통 에러 형식이 아니다(GlobalExceptionHandler 후속 과제).
+  - 사진 정렬 테스트가 약하다(minor).
+- 관련 task_id와 증거 경로: `place-detail-api` — `docs/agent-context/evidence/place-detail-api/`
+  - MEDIUM, GATE PASSED, 테스트 128건
+  - api-contract-tests는 MockMvc 컨트롤러 테스트로 기록했다.
+  - dependency-scan은 사용자 승인으로 waive했다(의존성 변경 없음, 도구 없음).
+
 ## 2026-11-03 — 장소·파일 보안·정합성 결함 수정 (place-file-hardening)
 
 - 배경: 알려진 이슈 #1(세션 쿠키 설정 미적용), #3(장소 삭제 시 사진 미정리), #4(오류 응답에 서버 경로 노출), #5(사진 업로드 검증 부족).
